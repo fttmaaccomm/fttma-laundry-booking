@@ -11,7 +11,8 @@
         h2 { text-align: center; margin-bottom: 25px; color: var(--primary); }
         h3 { border-bottom: 2px solid #eee; padding-bottom: 8px; margin-top: 25px; color: #34495e; }
         .form-group { margin-bottom: 18px; }
-        label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 14px; }
+        label, .group-title { display: block; margin-bottom: 6px; font-weight: 600; font-size: 14px; }
+        .group-title { margin-top: 0; color: var(--text); }
         input, select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 15px; }
         input:focus { border-color: var(--primary); outline: none; }
         
@@ -46,22 +47,22 @@
         <h2>🧺 Reserve Your Laundry Slot</h2>
         <form id="bookingForm">
             
-            <!-- Gender Input (Radio buttons for Bro / Sis) -->
+            <!-- Fixed accessibility headers by switching container headers to structural semantic tags -->
             <div class="form-group">
-                <label>Identify As</label>
+                <p class="group-title">Identify As</p>
                 <div class="radio-tile-group">
                     <div>
                         <input type="radio" id="genderBro" name="gender" value="Bro" required>
-                        <label for="genderBro" class="radio-label">👦 Bro</label>
+                        <label for="genderBro" class="radio-label"> Juan/Bro</label>
                     </div>
                     <div>
                         <input type="radio" id="genderSis" name="gender" value="Sis">
-                        <label for="genderSis" class="radio-label">👧 Sis</label>
+                        <label for="genderSis" class="radio-label"> Maria/Sis</label>
                     </div>
                 </div>
             </div>
 
-            <!-- Basic Text Inputs -->
+            <!-- Labels properly connected with target for attributes -->
             <div class="form-group">
                 <label for="name">Name</label>
                 <input type="text" id="name" required placeholder="Juan Dela Cruz">
@@ -72,9 +73,8 @@
                 <input type="text" id="roomNo" required placeholder="Room 302">
             </div>
 
-            <!-- Rented Machine Selection (Washer / Dryer / Both) -->
             <div class="form-group">
-                <label>Service Needed</label>
+                <p class="group-title">Service Needed</p>
                 <div class="radio-tile-group">
                     <div>
                         <input type="radio" id="rentWasher" name="rented" value="Washer" required onclick="toggleSchedules()">
@@ -112,7 +112,6 @@
                 </div>
             </div>
 
-            <!-- Attendant Input -->
             <div class="form-group" style="margin-top:20px;">
                 <label for="paidTo">Paid To (Attendant Name)</label>
                 <input type="text" id="paidTo" required placeholder="Staff Maria">
@@ -132,16 +131,13 @@
 </div>
 
 <script>
-    const GOOGLE_SCRIPT_URL = "YOUR_PASTED_WEB_APP_URL_HERE";
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzr5ws3w3-MjEa59rRFW2DYuiw9NJhIWfjmFamiiXZFHI9msLm9QVWpUW7foRFSwJC9JQ/exec";
     
-    // Tracks the current text chosen from schedule grids
     let selectedWasherTime = "Not Selected / Not Rented";
     let selectedDryerTime = "Not Selected / Not Rented";
 
-    // Setup predefined shifts for the laundry store
     const operatingHours = ["08:00 AM - 10:00 AM", "10:00 AM - 12:00 PM", "01:00 PM - 03:00 PM", "03:00 PM - 05:00 PM"];
 
-    // Automatically build 2 weeks of scheduling options upon window render
     window.onload = function() {
         buildSchedule('washerTable', 'washerSlot');
         buildSchedule('dryerTable', 'dryerSlot');
@@ -169,7 +165,6 @@
     }
 
     function selectSlot(buttonElement, classPrefix, fullDateTimeString) {
-        // Clear all selected highlights across that specific appliance pool
         document.querySelectorAll('.' + classPrefix).forEach(btn => btn.classList.remove('selected'));
         buttonElement.classList.add('selected');
 
@@ -186,9 +181,9 @@
         if (choice === 'Washer' || choice === 'Both') { document.getElementById('washerScheduleSection').classList.add('active'); }
         if (choice === 'Dryer' || choice === 'Both') { document.getElementById('dryerScheduleSection').classList.add('active'); }
     }
-document.getElementById('bookingForm').addEventListener('submit', function(e) {e.preventDefault();const serviceChosen = document.querySelector('input[name="rented"]:checked').value;// Safety Check Validation to ensure they picked required grid slots before sendingif((serviceChosen === 'Washer' || serviceChosen === 'Both') && selectedWasherTime.includes('Not Selected')) { alert('Please pick a date & time slot for your Washer!'); return; }if((serviceChosen === 'Dryer' || serviceChosen === 'Both') && selectedDryerTime.includes('Not Selected')) { alert('Please pick a date & time slot for your Dryer!'); return; }const btn = document.getElementById('submitBtn');btn.disabled = true;btn.innerText = "Transmitting to Sheets Tracker... ⏳";const formData = {gender: document.querySelector('input[name="gender"]:checked').value,name: document.getElementById('name').value,room_no: document.getElementById('roomNo').value,rented: serviceChosen,time_rented_dryer: serviceChosen === 'Washer' ? 'N/A' : selectedDryerTime,time_rented_washer: serviceChosen === 'Dryer' ? 'N/A' : selectedWasherTime,timestamp: new Date().toLocaleString(),paid_to: document.getElementById('paidTo').value};fetch(GOOGLE_SCRIPT_URL, {method: 'POST',mode: 'no-cors',headers: { 'Content-Type': 'application/json' },body: JSON.stringify(formData)}).then(() => {document.getElementById('formScreen').classList.add('hidden');document.getElementById('successScreen').classList.remove('hidden');}).catch(err => {alert("Something went wrong. Please check connection.");btn.disabled = false;btn.innerText = "Confirm Reservation 🚀";console.error(err);
-});
 
+    document.getElementById('bookingForm').addEventListener('submit', function(e) {
+e.preventDefault();const serviceChosen = document.querySelector('input[name="rented"]:checked').value;if((serviceChosen === 'Washer' || serviceChosen === 'Both') && selectedWasherTime.includes('Not Selected')) { alert('Please pick a date & time slot for your Washer!'); return; }if((serviceChosen === 'Dryer' || serviceChosen === 'Both') && selectedDryerTime.includes('Not Selected')) { alert('Please pick a date & time slot for your Dryer!'); return; }const btn = document.getElementById('submitBtn');btn.disabled = true;btn.innerText = "Transmitting to Sheets Tracker... ⏳";const formData = {gender: document.querySelector('input[name="gender"]:checked').value,name: document.getElementById('name').value,room_no: document.getElementById('roomNo').value,rented: serviceChosen,time_rented_dryer: serviceChosen === 'Washer' ? 'N/A' : selectedDryerTime,time_rented_washer: serviceChosen === 'Dryer' ? 'N/A' : selectedWasherTime,timestamp: new Date().toLocaleString(),paid_to: document.getElementById('paidTo').value};fetch(GOOGLE_SCRIPT_URL, {method: 'POST',mode: 'no-cors',headers: { 'Content-Type': 'application/json' },body: JSON.stringify(formData)}).then(() => {document.getElementById('formScreen').classList.add('hidden');document.getElementById('successScreen').classList.remove('hidden');}).catch(err => {alert("Something went wrong. Please check connection.");btn.disabled = false;btn.innerText = "Confirm Reservation 🚀";console.error(err);});});
 </script>
 </body>
 </html>
