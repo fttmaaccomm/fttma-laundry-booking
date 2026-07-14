@@ -3,11 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Laundry Booking System</title>
+    <!-- jsPDF Libraries for PDF Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    <title>FTTMa Laundry Booking System</title>
     <style>
         :root { --primary: #3498db; --bg: #f4f7f6; --text: #2c3e50; --success: #2ecc71; }
-        body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: var(--text); }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: var(--bg); /* Fallback color if image doesn't load */
+            background-image: url('fttma.jpeg'); /* <-- REPLACE with your image file */
+            background-size: cover; /* Cover the entire page */
+            background-position: center; /* Center the image */
+            background-repeat: no-repeat; /* Do not repeat the image */
+            background-attachment: fixed; /* Keep the background fixed on scroll */
+            margin: 0; padding: 20px; color: var(--text);
+            position: relative; /* Needed for the overlay */
+        }
+        body::before {
+            content: '';
+            position: fixed; /* Cover the entire viewport */
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5); /* Black overlay with 50% opacity. Adjust 0.5 to change brightness. */
+            z-index: -1; /* Place the overlay behind the content */
+        }
         .container { max-width: 1100px; margin: 20px auto; }
+        h1.main-title {
+            color: white;
+            text-align: center;
+            font-size: clamp(2rem, 4vw, 2.5rem); 
+        }
         h2 { text-align: center; margin-bottom: 25px; color: var(--primary); }
         h3 { border-bottom: 2px solid #eee; padding-bottom: 8px; margin-top: 25px; color: #34495e; }
         
@@ -35,8 +63,9 @@
         .radio-tile-group.vertical { flex-direction: column; }
         input[type="radio"]:checked + .radio-label { border-color: var(--primary); background: #ebf5fb; color: var(--primary); }
         .radio-label:hover {
-            background: #3498db;
-            border-color: #3498db;
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
         }
 
         /* Schedule Layout Styles */
@@ -69,13 +98,18 @@
         .btn-cancel:hover { background: #e74c3c; } /* Red hover for cancel buttons */
 
         button:disabled { background: #bdc3c7; cursor: not-allowed; }
-        .hidden { display: none; }
+        .hidden { display: none !important; }
         .form-actions {
             display: flex;
             gap: 15px;
             margin-top: 25px;
         }
         .success-card { text-align: center; padding: 20px; }
+        .payment-actions {
+            display: flex;
+            gap: 15px;
+            margin-top: 25px;
+        }
 
         /* Button visibility for different screen sizes */
         .form-actions-mobile {
@@ -83,6 +117,13 @@
         }
         .form-actions-desktop {
             display: flex; /* Visible by default */
+        }
+
+        #paymentScreen, #receiptScreen {
+            background: rgba(255, 255, 255, 0.9); /* Semi-transparent white */
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.05);
         }
 
         .receipt-icon {
@@ -102,20 +143,75 @@
                 display: none; /* Hide desktop buttons on mobile */
             }
             .form-actions-mobile {
-                display: flex; /* Show mobile buttons on mobile */
+                display: flex; 
             }
+            .payment-actions {
+                flex-direction: column; 
+            }
+            .admin-table-container {
+                max-height: 60vh;
+            }
+        }
+
+        /* Admin Panel & Modal Styles */
+        .admin-icon {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+        .modal {
+            position: fixed;
+            z-index: 1001;
+            left: 0; top: 0;
+            width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content { background-color: #fefefe; padding: 20px; border-radius: 10px; width: 90%; max-width: 400px; }
+        .admin-table-container {
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+        .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            gap: 20px;
+        }
+        .admin-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+            align-items: center;
+        }
+        .admin-controls input[type="date"] {
+            width: auto;
         }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>FTTMa Laundry Booking System</h2>
-    <!-- STEP 1: FORM INITIAL SCREEN -->
+    <h1 class="main-title">FTTMa Laundry Booking System</h1>
+    <!-- Information -->
     <div id="formScreen">
         <form id="bookingForm">
             <div class="form-layout">
-                <!-- Left Column for Inputs -->
+                <!-- Inputs -->
                 <div class="input-column">
                     <div class="form-group">
                         <p class="group-title">Gender</p>
@@ -133,12 +229,12 @@
 
                     <div class="form-group">
                         <label for="name">Name</label>
-                        <input type="text" id="name" required placeholder="Juan Dela Cruz">
+                        <input type="text" id="name" required placeholder="e.g. Juan Dela Cruz">
                     </div>
 
                     <div class="form-group">
                         <label for="roomNo">Room Number</label>
-                        <input type="text" id="roomNo" required placeholder="Room 302">
+                        <input type="text" id="roomNo" required placeholder="e.g. A301">
                     </div>
 
                     <div class="form-group">
@@ -160,19 +256,19 @@
                     </div>
 
                     <div class="form-actions form-actions-desktop">
-                        <button type="submit" class="btn-action btn-blue">🛒 Checkout</button>
-                        <button type="button" id="cancelBtn" class="btn-action btn-secondary btn-cancel">Cancel</button>
+                        <button type="submit" class="btn-action btn-blue"><img src="cart.png" alt="Cart" style="width: 20px; height: 20px;"> Checkout</button>
+                        <button type="button" id="cancelBtn" class="btn-action btn-secondary btn-cancel"><img src="cancel.png" alt="Cancel" style="width: 15px; height: 15px;"> Cancel</button>
                     </div>
                 </div>
 
-                <!-- Right Column for Schedules -->
+                <!-- Schedules -->
                 <div class="schedule-column">
                     <div id="washerScheduleSection" class="schedule-section disabled">
                         <h3>Washer Time Slot</h3>
                         <div class="table-responsive">
                             <table id="washerTable">
                                 <thead><tr><th>Date</th><th>Available Time Slots</th></tr></thead>
-                                <tbody></tbody>
+                                <tbody><tr><td colspan="2" style="text-align:center;">Loading schedules...</td></tr></tbody>
                             </table>
                         </div>
                     </div>
@@ -182,7 +278,7 @@
                         <div class="table-responsive">
                             <table id="dryerTable">
                                 <thead><tr><th>Date</th><th>Available Time Slots</th></tr></thead>
-                                <tbody></tbody>
+                                <tbody><tr><td colspan="2" style="text-align:center;">Loading schedules...</td></tr></tbody>
                             </table>
                         </div>
                     </div>
@@ -190,22 +286,22 @@
             </div>
             <!-- Buttons for Mobile View - will appear at the bottom -->
             <div class="form-actions form-actions-mobile">
-                <button type="submit" class="btn-action btn-blue">🛒 Checkout</button>
-                <button type="button" id="cancelBtnMobile" class="btn-action btn-secondary btn-cancel">Cancel</button>
+                <button type="submit" class="btn-action btn-blue"><img src="cart.png" alt="Cart" style="width: 20px; height: 20px;"> Checkout</button>
+                <button type="button" id="cancelBtnMobile" class="btn-action btn-secondary btn-cancel"> Cancel</button>
             </div>
         </form>
     </div>
 
-    <!-- STEP 2: REVIEW & PAYMENT SCREEN -->
+    <!-- REVIEW & PAYMENT SCREEN -->
     <div id="paymentScreen" class="hidden">
         <h2>Review & Payment</h2>
-        <p style="text-align: center; color: #7f8c8d;">Please review your reservation parameters below before finalizing payment.</p>
+        <p style="text-align: center; color: #7f8c8d;">Please review your information below before finalizing payment.</p>
         
         <div class="summary-box">
-            <div class="summary-item"><strong>Identity:</strong> <span id="reviewGender"></span></div>
-            <div class="summary-item"><strong>Customer Name:</strong> <span id="reviewName"></span></div>
+            <div class="summary-item"><strong>Gender:</strong> <span id="reviewGender"></span></div>
+            <div class="summary-item"><strong>Name:</strong> <span id="reviewName"></span></div>
             <div class="summary-item"><strong>Room Number:</strong> <span id="reviewRoom"></span></div>
-            <div class="summary-item"><strong>Selected Equipment:</strong> <span id="reviewRented"></span></div>
+            <div class="summary-item"><strong>Service Needed:</strong> <span id="reviewRented"></span></div>
             <div class="summary-item"><strong>Washer Slot:</strong> <span id="reviewWasherTime"></span></div>
             <div class="summary-item"><strong>Dryer Slot:</strong> <span id="reviewDryerTime"></span></div>
         </div>
@@ -235,7 +331,6 @@
             <div id="gcashFields" class="form-group hidden">
                 <div class="qr-container">
                     <p style="font-weight: bold; color: #2980b9; margin-top:0;">Scan GCash QR Code Below</p>
-                    <!-- Replace qr-placeholder.png with your actual QR code image URL uploaded to your github/imgur -->
                     <img src="GCASH.jpg" alt="GCash QR Code" id="gcashQr" class="qr-image">
                     <p style="font-size: 12px; color: #7f8c8d; margin-bottom:0;">Please complete the transfer and enter the reference number.</p>
                 </div>
@@ -243,8 +338,10 @@
                 <input type="text" id="paidToGcash" placeholder="e.g. 00123456789">
             </div>
 
-            <button type="submit" id="submitBtn" class="btn-action btn-green">Confirm Reservation</button>
-            <button type="button" id="backToFormBtn" class="btn-action btn-secondary">Go Back & Edit</button>
+            <div class="payment-actions">
+                <button type="submit" id="submitBtn" class="btn-action btn-green" disabled>Confirm</button>
+                <button type="button" id="backToFormBtn" class="btn-action btn-secondary">Back & Edit</button>
+            </div>
         </form>
     </div>
 
@@ -255,45 +352,92 @@
         <p style="text-align: center; color: #7f8c8d;">Your laundry slot has been successfully reserved. Here is your receipt.</p>
 
         <div class="summary-box" id="receiptDetails">
-            <!-- Receipt details will be populated here by JavaScript -->
+
         </div>
 
-        <button type="button" onclick="window.location.reload()" class="btn-action btn-secondary">Make Another Reservation</button>
+        <button type="button" onclick="window.location.reload()" class="btn-action btn-blue">Make Another Reservation</button>
+    </div>
+</div>
+
+<!-- ADMIN ACCESS ICON -->
+<div class="admin-icon" onclick="showAdminLogin()">
+    <!-- Replaced image with an inline SVG for reliability -->
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 28px; height: 28px;">
+        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4zm8.41-2.59L22 12.82V20h-2v-6.18l-1.41-1.41-1.18 1.18L16 12.18V8h2v3.18l1.41-1.41 1 1z"/>
+    </svg>
+</div>
+
+<!-- ADMIN LOGIN MODAL -->
+<div id="adminLoginModal" class="modal hidden">
+    <div class="modal-content">
+        <h2>Admin Login</h2>
+        <form id="adminLoginForm">
+            <div class="form-group"><label for="adminUser">Username</label><input type="text" id="adminUser" required></div>
+            <div class="form-group"><label for="adminPass">Password</label><input type="password" id="adminPass" required></div>
+            <button type="submit" class="btn-action btn-blue">Login</button>
+            <button type="button" class="btn-action btn-secondary" onclick="hideAdminLogin()">Cancel</button>
+        </form>
+    </div>
+</div>
+
+<!-- ADMIN PANEL -->
+<div id="adminPanel" class="hidden" style="background: white; padding: 30px; border-radius: 12px; max-width: 1200px; margin: 20px auto;">
+    <div class="admin-header">
+        <h2>Admin Panel - All Bookings</h2>
+        <button type="button" id="adminLogoutBtn" class="btn-action btn-secondary" style="margin-top: 0; width: auto; padding: 10px 20px;">Logout</button>
+    </div>
+    <div class="admin-controls">
+        <input type="text" id="adminSearch" placeholder="Search bookings..." style="flex-grow: 1;">
+        <input type="date" id="startDate">
+        <span>to</span>
+        <input type="date" id="endDate">
+        <button type="button" id="filterBtn" class="btn-action btn-blue" style="width: auto; padding: 12px 20px; margin-top: 0;">Filter</button>
+        <button type="button" id="resetBtn" class="btn-action btn-secondary" style="width: auto; padding: 12px 20px; margin-top: 0;">Reset</button>
+        <button type="button" id="downloadPdfBtn" class="btn-action btn-green" style="width: auto; padding: 12px 20px; margin-top: 0;">Download PDF</button>
+    </div>
+    <div class="admin-table-container">
+        <table id="adminBookingsTable">
+            <thead><tr><th id="timestampHeader" style="cursor: pointer;">Timestamp 🔽</th><th>Name</th><th>Room</th><th>Service</th><th>Washer Slot</th><th>Dryer Slot</th><th>Reference</th></tr></thead>
+            <tbody><tr><td colspan="7">Loading bookings...</td></tr></tbody>
+        </table>
     </div>
 </div>
 
 <script>
-    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyVtiJzci0ysjpT9YSyzTQo3UBShz9e5ZDyzqqMzrkgc_xLUFQRosSVz3JCnyXHCLI7WQ/exec";
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxTuDZ9XVDYMRHWTY1SQ6y5ARVgeRlueWba8N4vkHDlTnI22NWqEJ-3ItMrSFq6owdjng/exec"; // <-- Make sure this is your latest URL
     
     let lastBookingData = {}; // To store the data for the email receipt
     let selectedWasherTime = "Not Selected / Not Rented";
     let selectedDryerTime = "Not Selected / Not Rented";
     
-    // Array to save already booked laundry schedules fetched from Google Sheets
     let bookedSlots = [];
-    let inactivityTimer; // Timer for auto-canceling the form after inactivity
+    let inactivityTimer;
 
-    const operatingHours = ["08:00 AM - 10:00 AM", "10:00 AM - 12:00 PM", "01:00 PM - 03:00 PM", "03:00 PM - 05:00 PM"];
+    // Reverted to hardcoded time slots
+    const operatingHours = [
+        "08:00 AM - 10:00 AM",
+        "10:00 AM - 12:00 PM",
+        "12:00 PM - 02:00 PM",
+        "02:00 PM - 04:00 PM",
+        "04:00 PM - 06:00 PM",
+        "06:00 PM - 08:00 PM"
+    ];
 
-    // Fetch existing sheets records immediately upon window display
     window.onload = function() {
-        // Create a temporary global function for the JSONP callback
         window.onDataLoaded = function(data) {
-            bookedSlots = data; // Save the taken slots array globally
-
-            // Build the schedules now that we have the data
+            // Reverted: The old script returns a direct array, not an object with a 'bookings' property.
+            bookedSlots = data || []; 
+            
             buildSchedule('washerTable', 'washerSlot');
             buildSchedule('dryerTable', 'dryerSlot');
         };
 
         const script = document.createElement('script');
-        script.src = GOOGLE_SCRIPT_URL + "?callback=onDataLoaded";
-        // Add error handling in case the script fails to load
+        script.src = GOOGLE_SCRIPT_URL + "?callback=onDataLoaded&t=" + Date.now();
         script.onerror = () => {
             console.error("Failed to load schedule data from Google Sheets.");
             alert("Could not load schedule data. Please check your connection and refresh the page.");
         };
-        // Clean up the script tag from the document body after it has loaded
         script.onload = () => {
             document.body.removeChild(script);
         };
@@ -303,7 +447,12 @@
         resetInactivityTimer();
         ['click', 'keypress', 'touchstart'].forEach(evt => document.addEventListener(evt, resetInactivityTimer, false));
     };
-
+    function normalize(str){
+    return String(str)
+        .trim()
+        .replace(/\s+/g," ")
+        .toLowerCase();
+    }
     function buildSchedule(tableId, classPrefix) {
         const tbody = document.getElementById(tableId).getElementsByTagName('tbody')[0];
         tbody.innerHTML = ""; // Clear grid layout cache securely
@@ -332,9 +481,17 @@
                 // Crosscheck if this exact datetime entry exists in our spreadsheet data pool
                 let isAlreadyBooked = false;
                 if (classPrefix === 'washerSlot') {
-                    isAlreadyBooked = bookedSlots.some(b => b.time_rented_washer === uniqueText);
+                    isAlreadyBooked = bookedSlots.some(function(b){
+
+                        return normalize(b.time_rented_washer) === normalize(uniqueText);
+
+                    });
                 } else if (classPrefix === 'dryerSlot') {
-                    isAlreadyBooked = bookedSlots.some(b => b.time_rented_dryer === uniqueText);
+                    isAlreadyBooked = bookedSlots.some(function(b){
+
+                        return normalize(b.time_rented_dryer) === normalize(uniqueText);
+
+                    });
                 }
 
                 if (isAlreadyBooked) {
@@ -368,9 +525,6 @@
         document.getElementById('washerScheduleSection').classList.toggle('disabled', !isWasherActive);
         document.getElementById('dryerScheduleSection').classList.toggle('disabled', !isDryerActive);
 
-        // If the service choice is changed, we should clear any previous selections.
-        // This prevents a user from selecting a washer slot, changing service to "Dryer", and still having the washer slot data.
-        // Reset selections if service choice changes
         resetSelectionsAndButtons();
     }
 
@@ -388,6 +542,26 @@
             document.getElementById('paidToCash').required = false;
             document.getElementById('paidToGcash').required = true;
         }
+    }
+
+    function validatePaymentForm() {
+        const confirmBtn = document.getElementById('submitBtn');
+        const paymentMode = document.querySelector('input[name="paymentMode"]:checked');
+        const cashInput = document.getElementById('paidToCash');
+        const gcashInput = document.getElementById('paidToGcash');
+
+        let isValid = false;
+
+        if (paymentMode) {
+            if (paymentMode.value === 'Cash' && cashInput.value.trim() !== '' && cashInput.checkValidity()) {
+                isValid = true;
+            } else if (paymentMode.value === 'GCash' && gcashInput.value.trim() !== '') {
+                isValid = true;
+            }
+        }
+
+        // Enable or disable the button based on validity
+        confirmBtn.disabled = !isValid;
     }
 
     function resetSelectionsAndButtons() {
@@ -443,11 +617,11 @@
         const serviceChosen = serviceChoiceEl.value;
         
         // --- Validation Checks ---
-        if ((serviceChosen === 'Washer' || serviceChosen === 'Both') && selectedWasherTime.includes('Not Selected')) {
+        if ((serviceChosen === 'Washer' || serviceChosen === 'Both') && selectedWasherTime === 'Not Selected / Not Rented') {
             alert('Please pick a date & time slot for your Washer!');
             return;
         }
-        if ((serviceChosen === 'Dryer' || serviceChosen === 'Both') && selectedDryerTime.includes('Not Selected')) {
+        if ((serviceChosen === 'Dryer' || serviceChosen === 'Both') && selectedDryerTime === 'Not Selected / Not Rented') {
             alert('Please pick a date & time slot for your Dryer!');
             return;
         }
@@ -472,6 +646,9 @@
         clearTimeout(inactivityTimer);
     });
 
+    // Add event listener to the payment form to enable/disable the confirm button
+    document.getElementById('paymentForm').addEventListener('input', validatePaymentForm);
+
     document.getElementById('backToFormBtn').addEventListener('click', function() {
         document.getElementById('paymentScreen').classList.add('hidden');
         document.getElementById('formScreen').classList.remove('hidden');
@@ -485,21 +662,22 @@
         btn.innerText = "Transmitting to Sheets Tracker... ⏳";
 
         const paymentMode = document.querySelector('input[name="paymentMode"]:checked').value;
-        const paidToValue = paymentMode === 'Cash' ? document.getElementById('paidToCash').value : document.getElementById('paidToGcash').value;
 
         // Store the form data in a global variable for the receipt
+        // Reverted: This object now matches the order and fields expected by the old doPost function.
         const formData = {
             gender: document.querySelector('input[name="gender"]:checked').value,
             name: document.getElementById('name').value,
             room_no: document.getElementById('roomNo').value,
             rented: document.querySelector('input[name="rented"]:checked').value,
-            // Use the cleaned-up 'N/A' values for submission
             time_rented_dryer: (document.querySelector('input[name="rented"]:checked').value === 'Washer') ? 'N/A' : selectedDryerTime,
             time_rented_washer: (document.querySelector('input[name="rented"]:checked').value === 'Dryer') ? 'N/A' : selectedWasherTime,
-            timestamp: new Date().toLocaleString(),
-            payment_mode: paymentMode,
-            paid_to: paidToValue
+            timestamp: new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' }), // Using a specific timezone
+            paid_to: paymentMode === 'Cash' ? document.getElementById('paidToCash').value : document.getElementById('paidToGcash').value
         };
+
+        // Add the missing fields to lastBookingData for the receipt, even if not sent to the sheet.
+        formData.payment_mode = paymentMode;
 
         lastBookingData = formData; // Save for email functionality
 
@@ -524,16 +702,164 @@
         const receiptBox = document.getElementById('receiptDetails');
         receiptBox.innerHTML = `
             <div class="summary-item"><strong>Timestamp:</strong> <span>${lastBookingData.timestamp}</span></div>
-            <div class="summary-item"><strong>Identity:</strong> <span>${lastBookingData.gender}</span></div>
-            <div class="summary-item"><strong>Customer Name:</strong> <span>${lastBookingData.name}</span></div>
+            <div class="summary-item"><strong>Gender:</strong> <span>${lastBookingData.gender}</span></div>
+            <div class="summary-item"><strong>Name:</strong> <span>${lastBookingData.name}</span></div>
             <div class="summary-item"><strong>Room Number:</strong> <span>${lastBookingData.room_no}</span></div>
-            <div class="summary-item"><strong>Selected Equipment:</strong> <span>${lastBookingData.rented}</span></div>
+            <div class="summary-item"><strong>Service Needed:</strong> <span>${lastBookingData.rented}</span></div>
             <div class="summary-item"><strong>Washer Slot:</strong> <span>${lastBookingData.time_rented_washer}</span></div>
             <div class="summary-item"><strong>Dryer Slot:</strong> <span>${lastBookingData.time_rented_dryer}</span></div>
             <div class="summary-item"><strong>Payment Mode:</strong> <span>${lastBookingData.payment_mode}</span></div>
             <div class="summary-item"><strong>Reference/Receipt No:</strong> <span>${lastBookingData.paid_to}</span></div>
         `;
     }
+
+    // --- ADMIN PANEL SCRIPT ---
+
+    let adminBookingsData = []; // To store the raw admin data for sorting
+
+    function showAdminLogin() { document.getElementById('adminLoginModal').classList.remove('hidden'); }
+    function hideAdminLogin() { document.getElementById('adminLoginModal').classList.add('hidden'); }
+
+    document.getElementById('adminLoginForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const user = document.getElementById('adminUser').value;
+        const pass = document.getElementById('adminPass').value;
+
+        // IMPORTANT: This is NOT secure. For demonstration purposes only.
+        if (user === 'admin' && pass === 'password123') {
+            hideAdminLogin();
+            document.querySelector('.admin-icon').classList.add('hidden');
+            document.querySelector('.container').classList.add('hidden'); // Hide main booking form
+            document.getElementById('adminPanel').classList.remove('hidden');
+            loadAdminData();
+        } else {
+            alert('Invalid credentials.');
+        }
+    });
+
+    function loadAdminData() {
+        const tbody = document.getElementById('adminBookingsTable').querySelector('tbody');
+        tbody.innerHTML = '<tr><td colspan="7">Loading bookings...</td></tr>';
+        
+        window.onAdminBookingsLoaded = function(data) {
+            // Reverted: The old script returns a direct array of booking objects.
+            adminBookingsData = data || [];
+
+            // Convert timestamp strings to Date objects for reliable sorting/filtering
+            adminBookingsData.forEach(booking => {
+                booking.timestamp_date = new Date(booking.timestamp);
+            });
+            // Initially sort by newest first
+            sortAndRenderAdminTable('desc');
+        };
+
+        const script = document.createElement('script');
+        script.src = GOOGLE_SCRIPT_URL + "?action=getAdminData&callback=onAdminBookingsLoaded&t=" + Date.now();
+        script.onerror = () => { tbody.innerHTML = '<tr><td colspan="7">Failed to load data.</td></tr>'; };
+        script.onload = () => { document.body.removeChild(script); };
+        document.body.appendChild(script);
+    }
+
+    function applyFiltersAndRender() {
+        let filteredData = [...adminBookingsData];
+        const searchTerm = document.getElementById('adminSearch').value.toLowerCase();
+        const startDate = document.getElementById('startDate').valueAsDate;
+        const endDate = document.getElementById('endDate').valueAsDate;
+
+        // Apply search and date filters
+        if (searchTerm) {
+            filteredData = filteredData.filter(booking => Object.values(booking).join(' ').toLowerCase().includes(searchTerm));
+        }
+        if (startDate) {
+            filteredData = filteredData.filter(booking => booking.timestamp_date >= startDate);
+        }
+        if (endDate) {
+            // Add 1 day to the end date to make the filter inclusive
+            const inclusiveEndDate = new Date(endDate.getTime() + (24 * 60 * 60 * 1000));
+            filteredData = filteredData.filter(booking => booking.timestamp_date < inclusiveEndDate);
+        }
+
+        renderAdminTable(filteredData);
+    }
+
+    function renderAdminTable(data) {
+        const tbody = document.getElementById('adminBookingsTable').querySelector('tbody');
+        tbody.innerHTML = ''; // Clear table
+        if (!data || data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7">No bookings found.</td></tr>';
+            return;
+        }
+        data.forEach(booking => {
+            const row = tbody.insertRow();
+            row.innerHTML = `
+                <td>${booking.timestamp}</td>
+                <td>${booking.name}</td>
+                <td>${booking.room_no}</td>
+                <td>${booking.rented}</td>
+                <td>${booking.time_rented_washer}</td>
+                <td>${booking.time_rented_dryer}</td>
+                <td>${booking.paid_to}</td>
+            `;
+        });
+    }
+
+    function sortAndRenderAdminTable(direction) {
+        const header = document.getElementById('timestampHeader');
+        header.dataset.sortOrder = direction;
+        if (direction === 'desc') {
+            header.textContent = 'Timestamp 🔽';
+            adminBookingsData.sort((a, b) => b.timestamp_date - a.timestamp_date);
+        } else {
+            header.textContent = 'Timestamp 🔼';
+            adminBookingsData.sort((a, b) => a.timestamp_date - b.timestamp_date);
+        }
+        applyFiltersAndRender();
+    }
+
+    document.getElementById('timestampHeader').addEventListener('click', function() {
+        const sortOrder = this.dataset.sortOrder || 'desc';
+        sortAndRenderAdminTable(sortOrder === 'desc' ? 'asc' : 'desc');
+    });
+
+    document.getElementById('adminSearch').addEventListener('input', applyFiltersAndRender);
+    document.getElementById('filterBtn').addEventListener('click', applyFiltersAndRender);
+
+    document.getElementById('resetBtn').addEventListener('click', function() {
+        document.getElementById('adminSearch').value = '';
+        document.getElementById('startDate').value = '';
+        document.getElementById('endDate').value = '';
+        applyFiltersAndRender();
+    });
+
+    document.getElementById('downloadPdfBtn').addEventListener('click', function() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({
+            orientation: 'landscape'
+        });
+
+        doc.text("FTTMa Bookings Report", 14, 15);
+
+        doc.autoTable({
+            html: '#adminBookingsTable',
+            startY: 20,
+            headStyles: { fillColor: [52, 152, 219] }, // Blue header to match theme
+            didParseCell: function (data) {
+                // Clean up header text from sort icons before printing
+                if (data.section === 'head') {
+                    data.cell.text = data.cell.text[0].replace(' 🔽','').replace(' 🔼','');
+                }
+            }
+        });
+
+        doc.save('bookings_export.pdf');
+    });
+
+    document.getElementById('adminLogoutBtn').addEventListener('click', function() {
+        document.getElementById('adminPanel').classList.add('hidden');
+        document.querySelector('.admin-icon').classList.remove('hidden');
+        document.querySelector('.container').classList.remove('hidden');
+        document.getElementById('adminLoginForm').reset();
+    });
 
 </script>
 
