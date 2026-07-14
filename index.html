@@ -5,11 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Laundry Booking System</title>
     <style>
-        :root { --primary: #3498db; --bg: #f4f7f6; --text: #2c3e50; }
+        :root { --primary: #3498db; --bg: #f4f7f6; --text: #2c3e50; --success: #2ecc71; }
         body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: var(--text); }
-        .container { max-width: 650px; margin: 20px auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.05); }
+        .container { max-width: 1100px; margin: 20px auto; }
         h2 { text-align: center; margin-bottom: 25px; color: var(--primary); }
         h3 { border-bottom: 2px solid #eee; padding-bottom: 8px; margin-top: 25px; color: #34495e; }
+        
+        /* New Two-Column Layout */
+        .form-layout { display: flex; gap: 30px; }
+        .input-column, .schedule-column {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.05);
+        }
+        .input-column { flex: 1; min-width: 320px; }
+        .schedule-column { flex: 1.5; }
+
         .form-group { margin-bottom: 18px; }
         label, .group-title { display: block; margin-bottom: 6px; font-weight: 600; font-size: 14px; }
         .group-title { margin-top: 0; color: var(--text); }
@@ -18,13 +30,20 @@
         
         /* Radio Button Styling */
         .radio-tile-group { display: flex; gap: 15px; margin-top: 5px; }
-        .radio-label { display: flex; align-items: center; gap: 8px; background: #f8f9fa; border: 2px solid #ddd; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; justify-content: center; transition: all 0.2s; }
+        .radio-label { display: flex; align-items: center; gap: 8px; background: #f8f9fa; border: 2px solid #ddd; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 90%; justify-content: center; transition: all 0.2s; }
         input[type="radio"] { display: none; }
+        .radio-tile-group.vertical { flex-direction: column; }
         input[type="radio"]:checked + .radio-label { border-color: var(--primary); background: #ebf5fb; color: var(--primary); }
+        .radio-label:hover {
+            background: #3498db;
+            border-color: #3498db;
+        }
 
         /* Schedule Layout Styles */
-        .schedule-section { display: none; margin-top: 15px; }
-        .schedule-section.active { display: block; }
+        .schedule-section { margin-top: 15px; transition: opacity 0.3s; }
+        .schedule-section.disabled { opacity: 0.5; pointer-events: none; }
+        #washerScheduleSection, #dryerScheduleSection { margin-top: 0; margin-bottom: 20px; }
+
         .table-responsive { max-height: 250px; overflow-y: auto; border: 1px solid #ddd; border-radius: 6px; margin-top: 10px; }
         table { width: 100%; border-collapse: collapse; background: white; font-size: 14px; }
         th, td { padding: 10px; text-align: center; border-bottom: 1px solid #eee; }
@@ -33,123 +52,268 @@
         .time-slot-btn:hover { background: #3498db; color: white; }
         .time-slot-btn.selected { background: #2ecc71 !important; color: white !important; border-color: #2ecc71 !important; }
 
-        button.submit-btn { width: 100%; padding: 14px; background: #2ecc71; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; transition: background 0.2s; margin-top: 25px; }
-        button.submit-btn:hover { background: #27ae60; }
-        button.submit-btn:disabled { background: #bdc3c7; cursor: not-allowed; }
+        /* Summary Review Screen Styles */
+        .summary-box { background: #f8f9fa; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+        .summary-item { display: flex; justify-content: space-between; border-bottom: 1px dashed #e2e8f0; padding: 10px 0; font-size: 15px; }
+        .summary-item strong { color: #4a5568; }
+        .qr-container { text-align: center; margin: 15px 0; background: #fff; padding: 15px; border: 1px solid #ddd; border-radius: 8px; }
+        .qr-image { max-width: 200px; height: auto; display: block; margin: 0 auto 10px; border: 1px solid #eee; }
+
+        button.btn-action { width: 100%; padding: 14px; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; transition: background 0.2s; margin-top: 15px; }
+        .btn-blue { background: var(--primary); }
+        .btn-blue:hover { background: #2980b9; }
+        .btn-green { background: var(--success); }
+        .btn-green:hover { background: #27ae60; }
+        .btn-secondary { background: #7f8c8d; }
+        .btn-secondary:hover { background: #95a5a6; }
+        .btn-cancel:hover { background: #e74c3c; } /* Red hover for cancel buttons */
+
+        button:disabled { background: #bdc3c7; cursor: not-allowed; }
         .hidden { display: none; }
+        .form-actions {
+            display: flex;
+            gap: 15px;
+            margin-top: 25px;
+        }
         .success-card { text-align: center; padding: 20px; }
+
+        /* Button visibility for different screen sizes */
+        .form-actions-mobile {
+            display: none; /* Hidden by default */
+        }
+        .form-actions-desktop {
+            display: flex; /* Visible by default */
+        }
+
+        .receipt-icon {
+            display: block;
+            margin: 0 auto 15px;
+            width: 48px;
+            height: 48px;
+        }
+
+        /* Responsive Design for Mobile & Tablet */
+        @media (max-width: 1024px) {
+            .form-layout {
+                flex-direction: column;
+            }
+            body { padding: 10px; }
+            .form-actions-desktop {
+                display: none; /* Hide desktop buttons on mobile */
+            }
+            .form-actions-mobile {
+                display: flex; /* Show mobile buttons on mobile */
+            }
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
+    <h2>FTTMa Laundry Booking System</h2>
+    <!-- STEP 1: FORM INITIAL SCREEN -->
     <div id="formScreen">
-        <h2>🧺 Reserve Your Laundry Slot</h2>
         <form id="bookingForm">
-            
-            <!-- Fixed accessibility headers by switching container headers to structural semantic tags -->
-            <div class="form-group">
-                <p class="group-title">Identify As</p>
-                <div class="radio-tile-group">
-                    <div>
-                        <input type="radio" id="genderBro" name="gender" value="Bro" required>
-                        <label for="genderBro" class="radio-label"> Juan/Bro</label>
+            <div class="form-layout">
+                <!-- Left Column for Inputs -->
+                <div class="input-column">
+                    <div class="form-group">
+                        <p class="group-title">Gender</p>
+                        <div class="radio-tile-group vertical">
+                            <div>
+                                <input type="radio" id="genderBro" name="gender" value="Bro" required>
+                                <label for="genderBro" class="radio-label">Brother</label>
+                            </div>
+                            <div>
+                                <input type="radio" id="genderSis" name="gender" value="Sis">
+                                <label for="genderSis" class="radio-label">Sister</label>
+                            </div>
+                        </div>
                     </div>
-                    <div>
-                        <input type="radio" id="genderSis" name="gender" value="Sis">
-                        <label for="genderSis" class="radio-label"> Maria/Sis</label>
+
+                    <div class="form-group">
+                        <label for="name">Name</label>
+                        <input type="text" id="name" required placeholder="Juan Dela Cruz">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="roomNo">Room Number</label>
+                        <input type="text" id="roomNo" required placeholder="Room 302">
+                    </div>
+
+                    <div class="form-group">
+                        <p class="group-title">Service Needed</p>
+                        <div class="radio-tile-group vertical">
+                            <div>
+                                <input type="radio" id="rentWasher" name="rented" value="Washer" required onclick="toggleSchedules()">
+                                <label for="rentWasher" class="radio-label">Washer</label>
+                            </div>
+                            <div>
+                                <input type="radio" id="rentDryer" name="rented" value="Dryer" onclick="toggleSchedules()">
+                                <label for="rentDryer" class="radio-label">Dryer</label>
+                            </div>
+                            <div>
+                                <input type="radio" id="rentBoth" name="rented" value="Both" onclick="toggleSchedules()">
+                                <label for="rentBoth" class="radio-label">Both</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions form-actions-desktop">
+                        <button type="submit" class="btn-action btn-blue">🛒 Checkout</button>
+                        <button type="button" id="cancelBtn" class="btn-action btn-secondary btn-cancel">Cancel</button>
+                    </div>
+                </div>
+
+                <!-- Right Column for Schedules -->
+                <div class="schedule-column">
+                    <div id="washerScheduleSection" class="schedule-section disabled">
+                        <h3>Washer Time Slot</h3>
+                        <div class="table-responsive">
+                            <table id="washerTable">
+                                <thead><tr><th>Date</th><th>Available Time Slots</th></tr></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div id="dryerScheduleSection" class="schedule-section disabled">
+                        <h3>Dryer Time Slot</h3>
+                        <div class="table-responsive">
+                            <table id="dryerTable">
+                                <thead><tr><th>Date</th><th>Available Time Slots</th></tr></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
-
-            <!-- Labels properly connected with target for attributes -->
-            <div class="form-group">
-                <label for="name">Name</label>
-                <input type="text" id="name" required placeholder="Juan Dela Cruz">
+            <!-- Buttons for Mobile View - will appear at the bottom -->
+            <div class="form-actions form-actions-mobile">
+                <button type="submit" class="btn-action btn-blue">🛒 Checkout</button>
+                <button type="button" id="cancelBtnMobile" class="btn-action btn-secondary btn-cancel">Cancel</button>
             </div>
-
-            <div class="form-group">
-                <label for="roomNo">Room Number</label>
-                <input type="text" id="roomNo" required placeholder="Room 302">
-            </div>
-
-            <div class="form-group">
-                <p class="group-title">Service Needed</p>
-                <div class="radio-tile-group">
-                    <div>
-                        <input type="radio" id="rentWasher" name="rented" value="Washer" required onclick="toggleSchedules()">
-                        <label for="rentWasher" class="radio-label">💧 Washer</label>
-                    </div>
-                    <div>
-                        <input type="radio" id="rentDryer" name="rented" value="Dryer" onclick="toggleSchedules()">
-                        <label for="rentDryer" class="radio-label">🔥 Dryer</label>
-                    </div>
-                    <div>
-                        <input type="radio" id="rentBoth" name="rented" value="Both" onclick="toggleSchedules()">
-                        <label for="rentBoth" class="radio-label">🔄 Both</label>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Interactive 2-Week Schedules -->
-            <div id="washerScheduleSection" class="schedule-section">
-                <h3>📅 Select Washer Time Slot</h3>
-                <div class="table-responsive">
-                    <table id="washerTable">
-                        <thead><tr><th>Date</th><th>Available Time Slots</th></tr></thead>
-                        <tbody><!-- Generated dynamically via JavaScript --></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div id="dryerScheduleSection" class="schedule-section">
-                <h3>📅 Select Dryer Time Slot</h3>
-                <div class="table-responsive">
-                    <table id="dryerTable">
-                        <thead><tr><th>Date</th><th>Available Time Slots</th></tr></thead>
-                        <tbody><!-- Generated dynamically via JavaScript --></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div class="form-group" style="margin-top:20px;">
-                <label for="paidTo">Paid To (Attendant Name)</label>
-                <input type="text" id="paidTo" required placeholder="Staff Maria">
-            </div>
-
-            <button type="submit" id="submitBtn" class="submit-btn">Confirm Reservation 🚀</button>
         </form>
     </div>
 
-    <!-- Success Output Screen -->
-    <div id="successScreen" class="hidden success-card">
-        <div style="font-size:48px; margin-bottom:15px;">✅</div>
-        <h2>Booking Logged Successfully!</h2>
-        <p>The layout data has successfully transmitted straight to your tracking Google Sheet.</p>
-        <button onclick="window.location.reload()" style="background:#34495e; color:white; padding:10px 20px; border:none; border-radius:5px; margin-top:15px; cursor:pointer;">Book New Entry</button>
+    <!-- STEP 2: REVIEW & PAYMENT SCREEN -->
+    <div id="paymentScreen" class="hidden">
+        <h2>Review & Payment</h2>
+        <p style="text-align: center; color: #7f8c8d;">Please review your reservation parameters below before finalizing payment.</p>
+        
+        <div class="summary-box">
+            <div class="summary-item"><strong>Identity:</strong> <span id="reviewGender"></span></div>
+            <div class="summary-item"><strong>Customer Name:</strong> <span id="reviewName"></span></div>
+            <div class="summary-item"><strong>Room Number:</strong> <span id="reviewRoom"></span></div>
+            <div class="summary-item"><strong>Selected Equipment:</strong> <span id="reviewRented"></span></div>
+            <div class="summary-item"><strong>Washer Slot:</strong> <span id="reviewWasherTime"></span></div>
+            <div class="summary-item"><strong>Dryer Slot:</strong> <span id="reviewDryerTime"></span></div>
+        </div>
+
+        <form id="paymentForm">
+            <div class="form-group">
+                <p class="group-title">Select Mode of Payment</p>
+                <div class="radio-tile-group vertical">
+                    <div>
+                        <input type="radio" id="payCash" name="paymentMode" value="Cash" required onclick="togglePaymentFields()">
+                        <label for="payCash" class="radio-label"><img src="PesoCash.jpg" alt="GCash" style="width: 24px; height: 24px;"> Cash</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="payGcash" name="paymentMode" value="GCash" onclick="togglePaymentFields()">
+                        <label for="payGcash" class="radio-label"><img src="GCashIcon.png" alt="GCash" style="width: 24px; height: 24px;"> GCash</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Conditional Field: Cash Section -->
+            <div id="cashFields" class="form-group hidden">
+                <label for="paidToCash">Enter Receipt No.</label>
+                <input type="text" id="paidToCash" placeholder="#1-2345" pattern="#[0-9]-[0-9]{4}" title="Format must be #N-NNNN (e.g., #1-2345)">
+            </div>
+
+            <!-- Conditional Field: GCash Section -->
+            <div id="gcashFields" class="form-group hidden">
+                <div class="qr-container">
+                    <p style="font-weight: bold; color: #2980b9; margin-top:0;">Scan GCash QR Code Below</p>
+                    <!-- Replace qr-placeholder.png with your actual QR code image URL uploaded to your github/imgur -->
+                    <img src="GCASH.jpg" alt="GCash QR Code" id="gcashQr" class="qr-image">
+                    <p style="font-size: 12px; color: #7f8c8d; margin-bottom:0;">Please complete the transfer and enter the reference number.</p>
+                </div>
+                <label for="paidToGcash">GCash Reference Code</label>
+                <input type="text" id="paidToGcash" placeholder="e.g. 00123456789">
+            </div>
+
+            <button type="submit" id="submitBtn" class="btn-action btn-green">Confirm Reservation</button>
+            <button type="button" id="backToFormBtn" class="btn-action btn-secondary">Go Back & Edit</button>
+        </form>
+    </div>
+
+    <!-- STEP 3: RECEIPT SCREEN (Replaces Success Screen) -->
+    <div id="receiptScreen" class="hidden">
+        <img src="successful.jpeg" alt="Successful" class="receipt-icon">
+        <h2 style="color: var(--success); margin-top: 0;">Booking Confirmed!</h2>
+        <p style="text-align: center; color: #7f8c8d;">Your laundry slot has been successfully reserved. Here is your receipt.</p>
+
+        <div class="summary-box" id="receiptDetails">
+            <!-- Receipt details will be populated here by JavaScript -->
+        </div>
+
+        <button type="button" onclick="window.location.reload()" class="btn-action btn-secondary">Make Another Reservation</button>
     </div>
 </div>
 
 <script>
-    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwK_ETVsmGIqls28BfAldDNxXEj3w7fI8TgKC_Zp4kpWXIEubFjettgMXAkNpcJk75JOA/exec";
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyVtiJzci0ysjpT9YSyzTQo3UBShz9e5ZDyzqqMzrkgc_xLUFQRosSVz3JCnyXHCLI7WQ/exec";
     
+    let lastBookingData = {}; // To store the data for the email receipt
     let selectedWasherTime = "Not Selected / Not Rented";
     let selectedDryerTime = "Not Selected / Not Rented";
+    
+    // Array to save already booked laundry schedules fetched from Google Sheets
+    let bookedSlots = [];
+    let inactivityTimer; // Timer for auto-canceling the form after inactivity
 
     const operatingHours = ["08:00 AM - 10:00 AM", "10:00 AM - 12:00 PM", "01:00 PM - 03:00 PM", "03:00 PM - 05:00 PM"];
 
+    // Fetch existing sheets records immediately upon window display
     window.onload = function() {
-        buildSchedule('washerTable', 'washerSlot');
-        buildSchedule('dryerTable', 'dryerSlot');
+        // Create a temporary global function for the JSONP callback
+        window.onDataLoaded = function(data) {
+            bookedSlots = data; // Save the taken slots array globally
+
+            // Build the schedules now that we have the data
+            buildSchedule('washerTable', 'washerSlot');
+            buildSchedule('dryerTable', 'dryerSlot');
+        };
+
+        const script = document.createElement('script');
+        script.src = GOOGLE_SCRIPT_URL + "?callback=onDataLoaded";
+        // Add error handling in case the script fails to load
+        script.onerror = () => {
+            console.error("Failed to load schedule data from Google Sheets.");
+            alert("Could not load schedule data. Please check your connection and refresh the page.");
+        };
+        // Clean up the script tag from the document body after it has loaded
+        script.onload = () => {
+            document.body.removeChild(script);
+        };
+        document.body.appendChild(script);
+
+        // Start the inactivity timer when the page loads
+        resetInactivityTimer();
+        ['click', 'keypress', 'touchstart'].forEach(evt => document.addEventListener(evt, resetInactivityTimer, false));
     };
 
     function buildSchedule(tableId, classPrefix) {
         const tbody = document.getElementById(tableId).getElementsByTagName('tbody')[0];
-        const today = new Date();
+        tbody.innerHTML = ""; // Clear grid layout cache securely
+        const todayNormalized = new Date(new Date().setHours(0, 0, 0, 0));
         
         for (let i = 0; i < 14; i++) {
-            const currentDay = new Date();
-            currentDay.setDate(today.getDate() + i);
+            const currentDay = new Date(todayNormalized);
+            currentDay.setDate(currentDay.getDate() + i);
+            
+            const currentDayNormalized = new Date(currentDay.getFullYear(), currentDay.getMonth(), currentDay.getDate());
             const dateString = currentDay.toLocaleDateString('en-US', { month: 'short', day: 'numeric', weekday: 'short' });
             
             let row = tbody.insertRow();
@@ -157,9 +321,33 @@
             dateCell.innerHTML = `<strong>${dateString}</strong>`;
             
             let slotsCell = row.insertCell(1);
+            
+            const isPastDay = currentDayNormalized < todayNormalized;
+            const isSameDay = currentDayNormalized.getTime() === todayNormalized.getTime();
+            const dateDisabledByCalendar = isPastDay || isSameDay;
+
             operatingHours.forEach(hour => {
                 let uniqueText = `${dateString} @ ${hour}`;
-                slotsCell.innerHTML += `<button type="button" class="time-slot-btn ${classPrefix}" onclick="selectSlot(this, '${classPrefix}', '${uniqueText}')">${hour}</button><div style="margin-bottom:6px;"></div>`;
+                
+                // Crosscheck if this exact datetime entry exists in our spreadsheet data pool
+                let isAlreadyBooked = false;
+                if (classPrefix === 'washerSlot') {
+                    isAlreadyBooked = bookedSlots.some(b => b.time_rented_washer === uniqueText);
+                } else if (classPrefix === 'dryerSlot') {
+                    isAlreadyBooked = bookedSlots.some(b => b.time_rented_dryer === uniqueText);
+                }
+
+                if (isAlreadyBooked) {
+                    // This slot is booked, so create a disabled red button.
+                    slotsCell.innerHTML += `<button type="button" class="time-slot-btn" style="background: #e74c3c; color: white; border-color: #e74c3c; cursor: not-allowed;" disabled>BOOKED 🔒</button><div style="margin-bottom:6px;"></div>`;
+                } else if (dateDisabledByCalendar) {
+                    // This slot is on a past or same day and wasn't booked, so create a disabled gray button.
+                    // This enforces the "no same-day booking" rule.
+                    slotsCell.innerHTML += `<button type="button" class="time-slot-btn" style="border-color: #bdc3c7; color: #bdc3c7; cursor: not-allowed;" disabled>${hour}</button><div style="margin-bottom:6px;"></div>`;
+                } else {
+                    // This slot is available.
+                    slotsCell.innerHTML += `<button type="button" class="time-slot-btn ${classPrefix}" onclick="selectSlot(this, '${classPrefix}', '${uniqueText}')">${hour}</button><div style="margin-bottom:6px;"></div>`;
+                }
             });
         }
     }
@@ -174,16 +362,180 @@
 
     function toggleSchedules() {
         const choice = document.querySelector('input[name="rented"]:checked').value;
+        const isWasherActive = choice === 'Washer' || choice === 'Both';
+        const isDryerActive = choice === 'Dryer' || choice === 'Both';
         
-        document.getElementById('washerScheduleSection').classList.remove('active');
-        document.getElementById('dryerScheduleSection').classList.remove('active');
-        
-        if (choice === 'Washer' || choice === 'Both') { document.getElementById('washerScheduleSection').classList.add('active'); }
-        if (choice === 'Dryer' || choice === 'Both') { document.getElementById('dryerScheduleSection').classList.add('active'); }
+        document.getElementById('washerScheduleSection').classList.toggle('disabled', !isWasherActive);
+        document.getElementById('dryerScheduleSection').classList.toggle('disabled', !isDryerActive);
+
+        // If the service choice is changed, we should clear any previous selections.
+        // This prevents a user from selecting a washer slot, changing service to "Dryer", and still having the washer slot data.
+        // Reset selections if service choice changes
+        resetSelectionsAndButtons();
     }
 
+    function togglePaymentFields() {
+        const choice = document.querySelector('input[name="paymentMode"]:checked').value;
+        document.getElementById('cashFields').classList.add('hidden');
+        document.getElementById('gcashFields').classList.add('hidden');
+
+        if (choice === 'Cash') {
+            document.getElementById('cashFields').classList.remove('hidden');
+            document.getElementById('paidToCash').required = true;
+            document.getElementById('paidToGcash').required = false;
+        } else if (choice === 'GCash') {
+            document.getElementById('gcashFields').classList.remove('hidden');
+            document.getElementById('paidToCash').required = false;
+            document.getElementById('paidToGcash').required = true;
+        }
+    }
+
+    function resetSelectionsAndButtons() {
+        // Reset global time variables
+        selectedWasherTime = "Not Selected / Not Rented";
+        selectedDryerTime = "Not Selected / Not Rented";
+
+        // Remove 'selected' class from all time slot buttons
+        document.querySelectorAll('.time-slot-btn.selected').forEach(btn => {
+            btn.classList.remove('selected');
+        });
+    }
+
+    function autoCancel() {
+        // Only reset if the user is on the main form screen
+        if (!document.getElementById('formScreen').classList.contains('hidden')) {
+            console.log("User inactive, resetting form.");
+            document.getElementById('bookingForm').reset();
+            resetSelectionsAndButtons();
+            document.getElementById('washerScheduleSection').classList.add('disabled');
+            document.getElementById('dryerScheduleSection').classList.add('disabled');
+        }
+    }
+
+    function resetInactivityTimer() {
+        clearTimeout(inactivityTimer);
+        inactivityTimer = setTimeout(autoCancel, 5 * 60 * 1000); // 5 minutes
+    }
+
+    document.getElementById('cancelBtn').addEventListener('click', function() {
+        document.getElementById('bookingForm').reset();
+        resetSelectionsAndButtons();
+        document.getElementById('washerScheduleSection').classList.add('disabled');
+        document.getElementById('dryerScheduleSection').classList.add('disabled');
+    });
+
+    // Add listener for the new mobile cancel button
+    document.getElementById('cancelBtnMobile').addEventListener('click', function() {
+        document.getElementById('bookingForm').reset();
+        resetSelectionsAndButtons();
+        document.getElementById('washerScheduleSection').classList.add('disabled');
+        document.getElementById('dryerScheduleSection').classList.add('disabled');
+    });
+
     document.getElementById('bookingForm').addEventListener('submit', function(e) {
-e.preventDefault();const serviceChosen = document.querySelector('input[name="rented"]:checked').value;if((serviceChosen === 'Washer' || serviceChosen === 'Both') && selectedWasherTime.includes('Not Selected')) { alert('Please pick a date & time slot for your Washer!'); return; }if((serviceChosen === 'Dryer' || serviceChosen === 'Both') && selectedDryerTime.includes('Not Selected')) { alert('Please pick a date & time slot for your Dryer!'); return; }const btn = document.getElementById('submitBtn');btn.disabled = true;btn.innerText = "Transmitting to Sheets Tracker... ⏳";const formData = {gender: document.querySelector('input[name="gender"]:checked').value,name: document.getElementById('name').value,room_no: document.getElementById('roomNo').value,rented: serviceChosen,time_rented_dryer: serviceChosen === 'Washer' ? 'N/A' : selectedDryerTime,time_rented_washer: serviceChosen === 'Dryer' ? 'N/A' : selectedWasherTime,timestamp: new Date().toLocaleString(),paid_to: document.getElementById('paidTo').value};fetch(GOOGLE_SCRIPT_URL, {method: 'POST',mode: 'no-cors',headers: { 'Content-Type': 'application/json' },body: JSON.stringify(formData)}).then(() => {document.getElementById('formScreen').classList.add('hidden');document.getElementById('successScreen').classList.remove('hidden');}).catch(err => {alert("Something went wrong. Please check connection.");btn.disabled = false;btn.innerText = "Confirm Reservation 🚀";console.error(err);});});
+        e.preventDefault();
+        
+        const serviceChoiceEl = document.querySelector('input[name="rented"]:checked');
+        if (!serviceChoiceEl) {
+            alert('Please select a service (Washer, Dryer, or Both).');
+            return;
+        }
+        const serviceChosen = serviceChoiceEl.value;
+        
+        // --- Validation Checks ---
+        if ((serviceChosen === 'Washer' || serviceChosen === 'Both') && selectedWasherTime.includes('Not Selected')) {
+            alert('Please pick a date & time slot for your Washer!');
+            return;
+        }
+        if ((serviceChosen === 'Dryer' || serviceChosen === 'Both') && selectedDryerTime.includes('Not Selected')) {
+            alert('Please pick a date & time slot for your Dryer!');
+            return;
+        }
+
+        // --- Data Cleanup & Population for Review Screen ---
+        const finalWasherTime = (serviceChosen === 'Dryer') ? 'N/A' : selectedWasherTime;
+        const finalDryerTime = (serviceChosen === 'Washer') ? 'N/A' : selectedDryerTime;
+
+        // Populate review screen with cleaned data
+        document.getElementById('reviewGender').textContent = document.querySelector('input[name="gender"]:checked').value;
+        document.getElementById('reviewName').textContent = document.getElementById('name').value;
+        document.getElementById('reviewRoom').textContent = document.getElementById('roomNo').value;
+        document.getElementById('reviewRented').textContent = serviceChosen;
+        document.getElementById('reviewWasherTime').textContent = finalWasherTime;
+        document.getElementById('reviewDryerTime').textContent = finalDryerTime;
+
+        // Hide form and show payment/review screen
+        document.getElementById('formScreen').classList.add('hidden');
+        document.getElementById('paymentScreen').classList.remove('hidden');
+
+        // Stop the inactivity timer on the review screen
+        clearTimeout(inactivityTimer);
+    });
+
+    document.getElementById('backToFormBtn').addEventListener('click', function() {
+        document.getElementById('paymentScreen').classList.add('hidden');
+        document.getElementById('formScreen').classList.remove('hidden');
+    });
+
+    document.getElementById('paymentForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const btn = document.getElementById('submitBtn');
+        btn.disabled = true;
+        btn.innerText = "Transmitting to Sheets Tracker... ⏳";
+
+        const paymentMode = document.querySelector('input[name="paymentMode"]:checked').value;
+        const paidToValue = paymentMode === 'Cash' ? document.getElementById('paidToCash').value : document.getElementById('paidToGcash').value;
+
+        // Store the form data in a global variable for the receipt
+        const formData = {
+            gender: document.querySelector('input[name="gender"]:checked').value,
+            name: document.getElementById('name').value,
+            room_no: document.getElementById('roomNo').value,
+            rented: document.querySelector('input[name="rented"]:checked').value,
+            // Use the cleaned-up 'N/A' values for submission
+            time_rented_dryer: (document.querySelector('input[name="rented"]:checked').value === 'Washer') ? 'N/A' : selectedDryerTime,
+            time_rented_washer: (document.querySelector('input[name="rented"]:checked').value === 'Dryer') ? 'N/A' : selectedWasherTime,
+            timestamp: new Date().toLocaleString(),
+            payment_mode: paymentMode,
+            paid_to: paidToValue
+        };
+
+        lastBookingData = formData; // Save for email functionality
+
+        fetch(GOOGLE_SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors', // Important for Google Apps Script simple POST
+                body: JSON.stringify(formData)
+            }).then(() => {
+                // On success, populate and show the receipt screen
+                populateReceipt();
+                document.getElementById('paymentScreen').classList.add('hidden');
+                document.getElementById('receiptScreen').classList.remove('hidden');
+            }).catch(err => {
+            alert("Something went wrong. Please check connection.");
+            btn.disabled = false;
+            btn.innerText = "Confirm Booking";
+            console.error(err);
+        });
+    });
+
+    function populateReceipt() {
+        const receiptBox = document.getElementById('receiptDetails');
+        receiptBox.innerHTML = `
+            <div class="summary-item"><strong>Timestamp:</strong> <span>${lastBookingData.timestamp}</span></div>
+            <div class="summary-item"><strong>Identity:</strong> <span>${lastBookingData.gender}</span></div>
+            <div class="summary-item"><strong>Customer Name:</strong> <span>${lastBookingData.name}</span></div>
+            <div class="summary-item"><strong>Room Number:</strong> <span>${lastBookingData.room_no}</span></div>
+            <div class="summary-item"><strong>Selected Equipment:</strong> <span>${lastBookingData.rented}</span></div>
+            <div class="summary-item"><strong>Washer Slot:</strong> <span>${lastBookingData.time_rented_washer}</span></div>
+            <div class="summary-item"><strong>Dryer Slot:</strong> <span>${lastBookingData.time_rented_dryer}</span></div>
+            <div class="summary-item"><strong>Payment Mode:</strong> <span>${lastBookingData.payment_mode}</span></div>
+            <div class="summary-item"><strong>Reference/Receipt No:</strong> <span>${lastBookingData.paid_to}</span></div>
+        `;
+    }
+
 </script>
+
 </body>
 </html>
