@@ -934,7 +934,7 @@
 </div>
 
 <script>
-    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz32JAS2hgkkGzzSPEDUv1zE0j7oJMuWtRk2Q1NyXVWAS3-IR6IpmqKBi_rVggpy7J-dw/exec"; // <-- Make sure this is your latest URL
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxFtIgJhDYCPpkD0yKuv1H0YnMaPHFe-M-8Tp7cuG9SBHVzcpNsw06PGa6SyAdpaLZRfw/exec"; // <-- Make sure this is your latest URL
     
     const LAUNDRY_PRICE = 60;
     const ADMIN_USERNAME = 'admin';
@@ -959,16 +959,13 @@
     }
 
     function mergeTimeSlots(localSlots, remoteSlots) {
-        const merged = [];
-        const seen = new Set();
-        [...(localSlots || []), ...(remoteSlots || [])].forEach(slot => {
-            const key = `${slot.id || ''}-${slot.slot_date || ''}-${slot.slot_time || ''}`;
-            if (!seen.has(key)) {
-                seen.add(key);
-                merged.push(slot);
-            }
-        });
-        return merged;
+        const remoteList = Array.isArray(remoteSlots) ? remoteSlots : [];
+        if (remoteList.length > 0) {
+            return remoteList.map(slot => ({ ...slot }));
+        }
+
+        const localList = Array.isArray(localSlots) ? localSlots : [];
+        return localList.map(slot => ({ ...slot }));
     }
 
     function loadAdminPassword(callback) {
@@ -1023,12 +1020,7 @@
 
     // Reverted to hardcoded time slots
     const operatingHours = [
-        "08:00 AM - 10:00 AM",
-        "10:00 AM - 12:00 PM",
-        "12:00 PM - 02:00 PM",
-        "02:00 PM - 04:00 PM",
-        "04:00 PM - 06:00 PM",
-        "06:00 PM - 08:00 PM"
+        
     ];
 
     window.onload = function() {
@@ -1592,6 +1584,7 @@
             adminTimeSlotsData = mergeTimeSlots(getStoredTimeSlots(), remoteSlots);
             persistTimeSlots(adminTimeSlotsData);
             renderAdminSlots();
+            populateSlotSelect();
         };
 
         const script = document.createElement('script');
@@ -1601,16 +1594,27 @@
         document.body.appendChild(script);
     }
 
+    function normalizeSlotDateValue(value) {
+        if (!value) return '';
+        if (value instanceof Date) {
+            return value.toISOString().split('T')[0];
+        }
+        const text = String(value).trim();
+        if (!text) return '';
+        return text.includes('T') ? text.split('T')[0] : text;
+    }
+
     function isUpcomingSlot(slot) {
         if (!slot || !slot.slot_date) return false;
-        const slotDate = new Date(slot.slot_date + 'T00:00:00');
+        const slotDate = new Date(normalizeSlotDateValue(slot.slot_date) + 'T00:00:00');
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         return slotDate >= today;
     }
 
     function isWeekendDate(dateValue, weekendType) {
-        const parsedDate = new Date(dateValue + 'T00:00:00');
+        const normalizedDate = normalizeSlotDateValue(dateValue);
+        const parsedDate = new Date(normalizedDate + 'T00:00:00');
         if (Number.isNaN(parsedDate.getTime())) return false;
         const day = parsedDate.getDay();
         return weekendType === 'sunday' ? day === 0 : day === 6;
@@ -1782,6 +1786,7 @@
         adminTimeSlotsData = [...adminTimeSlotsData, newSlot];
         persistTimeSlots(adminTimeSlotsData);
         renderAdminSlots();
+        populateSlotSelect();
         refreshBookingSchedule();
 
         fetch(GOOGLE_SCRIPT_URL, {
@@ -1835,6 +1840,7 @@
         });
         persistTimeSlots(adminTimeSlotsData);
         renderAdminSlots();
+        populateSlotSelect();
         refreshBookingSchedule();
 
         fetch(GOOGLE_SCRIPT_URL, {
@@ -1867,6 +1873,7 @@
         adminTimeSlotsData = adminTimeSlotsData.filter(slot => String(slot.id) !== String(slotId));
         persistTimeSlots(adminTimeSlotsData);
         renderAdminSlots();
+        populateSlotSelect();
         refreshBookingSchedule();
 
         fetch(GOOGLE_SCRIPT_URL, {
@@ -2039,4 +2046,3 @@
 
 </body>
 </html>
-
