@@ -1378,7 +1378,19 @@
             method: 'GET',
             headers: { 'Accept': 'application/json' }
         }).then(function(response) {
-            return response.json().catch(function() { return {}; });
+            if (!response.ok) {
+                throw new Error('Apps Script returned ' + response.status);
+            }
+            return response.text().then(function(text) {
+                if (!text) {
+                    return {};
+                }
+                try {
+                    return JSON.parse(text);
+                } catch (err) {
+                    throw new Error('Invalid JSON response from Apps Script');
+                }
+            });
         }).then(function(data) {
             const normalizedData = Array.isArray(data) ? data : (data && data.bookings ? data.bookings : []);
             bookedSlots = normalizedData || [];
@@ -1391,9 +1403,9 @@
                 buildSchedule('dryerTable', 'dryerSlot');
             }
             return true;
-        }).catch(function() {
-            console.error("Failed to load schedule data from Google Sheets.");
-            showWarningModal("Could not load schedule data. Please check your connection and refresh the page.");
+        }).catch(function(err) {
+            console.error("Failed to load schedule data from Google Sheets.", err);
+            showWarningModal("The schedule service is unavailable right now. Please re-publish the Apps Script project and refresh the page.");
             return false;
         });
     }
