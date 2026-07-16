@@ -1200,7 +1200,7 @@
 </div>
 
 <script>
-    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzAEpacwQH2D47eBmysFWiCAM0XODw7rzfQ3sAPFVncskuVvvVKaDRZKAeY3CpiS3n1ug/exec"; // <-- Make sure this is your latest URL
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxZLxNO6faps8kqoCquRdQ8fs7WOIQ3cq-LX1Ni-49YzpyT6q58_OJuwZF6NtvK3cmY7A/exec"; // <-- Make sure this is your latest URL
     
     const DEFAULT_WASHER_PRICE = 60;
     const DEFAULT_DRYER_PRICE = 60;
@@ -1926,10 +1926,10 @@
                     document.getElementById('paymentScreen').classList.add('hidden');
                     document.getElementById('receiptScreen').classList.remove('hidden');
                 } else {
-                    throw new Error('Booking save failed');
+                    throw new Error(result && result.error ? result.error : 'Booking save failed');
                 }
             }).catch(err => {
-                showWarningModal("Something went wrong. Please check your connection and try again.");
+                showWarningModal(err && err.message ? err.message : "Something went wrong. Please check your connection and try again.");
                 btn.disabled = false;
                 btn.innerText = "Confirm Booking";
                 console.error(err);
