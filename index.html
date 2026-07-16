@@ -1200,7 +1200,7 @@
 </div>
 
 <script>
-    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzh4_3VexU8u43_oMxFmemi6Qh6U5xSNFAD2F6Sb1M47LHoJ9c3bteg6jpHlPIKkNebWg/exec"; // <-- Make sure this is your latest URL
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxdr_B85KTVqaMlAwGIcRl4pGonXE3mxnHCcQ5oNktNUlFFhIKEl_YJaAfYKe41Jqsdwg/exec"; // <-- Make sure this is your latest URL
     
     const DEFAULT_WASHER_PRICE = 60;
     const DEFAULT_DRYER_PRICE = 60;
@@ -1210,6 +1210,27 @@
     let adminPassword = null;
     let washerPrice = DEFAULT_WASHER_PRICE;
     let dryerPrice = DEFAULT_DRYER_PRICE;
+
+    function postToScript(payload) {
+        return fetch(GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        }).then(function(response) {
+            if (!response.ok) {
+                return response.text().then(function(text) {
+                    throw new Error(text || 'Request failed');
+                });
+            }
+            return response.text();
+        }).then(function(text) {
+            try {
+                return JSON.parse(text);
+            } catch (err) {
+                return { success: true, raw: text };
+            }
+        });
+    }
 
     function getStoredTimeSlots() {
         try {
@@ -1236,45 +1257,45 @@
 
     function persistPrices(prices) {
         localStorage.setItem(PRICE_STORAGE_KEY, JSON.stringify(prices));
-        return fetch(GOOGLE_SCRIPT_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                action: 'savePricing',
-                washer: prices.washer,
-                dryer: prices.dryer
-            })
-        }).then(function(response) {
-            return response.json().catch(function() { return {}; });
-        }).catch(function() {
-            return { success: false };
+        return postToScript({
+            action: 'savePricing',
+            washer: prices.washer,
+            dryer: prices.dryer
         });
     }
 
     function loadPricesFromServer(callback) {
-        return fetch(GOOGLE_SCRIPT_URL + '?action=getPricing', {
-            method: 'GET',
-            headers: { 'Accept': 'application/json' }
-        }).then(function(response) {
-            return response.json().catch(function() { return {}; });
-        }).then(function(data) {
-            const nextPrices = {
-                washer: Number(data && data.washer !== undefined ? data.washer : DEFAULT_WASHER_PRICE),
-                dryer: Number(data && data.dryer !== undefined ? data.dryer : DEFAULT_DRYER_PRICE)
+        return new Promise(function(resolve) {
+            const callbackName = 'onPricesLoaded' + Date.now();
+            window[callbackName] = function(data) {
+                delete window[callbackName];
+                const nextPrices = {
+                    washer: Number(data && data.washer !== undefined ? data.washer : DEFAULT_WASHER_PRICE),
+                    dryer: Number(data && data.dryer !== undefined ? data.dryer : DEFAULT_DRYER_PRICE)
+                };
+                localStorage.setItem(PRICE_STORAGE_KEY, JSON.stringify(nextPrices));
+                washerPrice = nextPrices.washer;
+                dryerPrice = nextPrices.dryer;
+                applyPricingToUI();
+                if (callback) callback(nextPrices);
+                resolve(nextPrices);
             };
-            localStorage.setItem(PRICE_STORAGE_KEY, JSON.stringify(nextPrices));
-            washerPrice = nextPrices.washer;
-            dryerPrice = nextPrices.dryer;
-            applyPricingToUI();
-            if (callback) callback(nextPrices);
-            return nextPrices;
-        }).catch(function() {
-            const fallbackPrices = getStoredPrices();
-            washerPrice = fallbackPrices.washer;
-            dryerPrice = fallbackPrices.dryer;
-            applyPricingToUI();
-            if (callback) callback(fallbackPrices);
-            return fallbackPrices;
+
+            const script = document.createElement('script');
+            script.src = GOOGLE_SCRIPT_URL + "?action=getPricing&callback=" + callbackName + "&t=" + Date.now();
+            script.onerror = function() {
+                delete window[callbackName];
+                const fallbackPrices = getStoredPrices();
+                washerPrice = fallbackPrices.washer;
+                dryerPrice = fallbackPrices.dryer;
+                applyPricingToUI();
+                if (callback) callback(fallbackPrices);
+                resolve(fallbackPrices);
+            };
+            script.onload = function() {
+                document.body.removeChild(script);
+            };
+            document.body.appendChild(script);
         });
     }
 
@@ -1318,20 +1339,21 @@
             return;
         }
 
-        return fetch(GOOGLE_SCRIPT_URL + '?action=getAdminConfig', {
-            method: 'GET',
-            headers: { 'Accept': 'application/json' }
-        }).then(function(response) {
-            return response.json().catch(function() { return {}; });
-        }).then(function(data) {
+        window.onAdminPasswordLoaded = function(data) {
             adminPassword = data && data.password ? data.password : 'password123';
             callback(adminPassword);
-            return adminPassword;
-        }).catch(function() {
+        };
+
+        const script = document.createElement('script');
+        script.src = GOOGLE_SCRIPT_URL + "?action=getAdminConfig&callback=onAdminPasswordLoaded&t=" + Date.now();
+        script.onerror = () => {
             adminPassword = 'password123';
             callback(adminPassword);
-            return adminPassword;
-        });
+        };
+        script.onload = () => {
+            document.body.removeChild(script);
+        };
+        document.body.appendChild(script);
     }
 
     let lastBookingData = {}; // To store the data for the email receipt
@@ -1374,39 +1396,32 @@
     let inactivityTimer;
 
     function loadScheduleDataFromServer(refreshMainSchedule = true) {
-        return fetch(GOOGLE_SCRIPT_URL + '?action=getScheduleData', {
-            method: 'GET',
-            headers: { 'Accept': 'application/json' }
-        }).then(function(response) {
-            if (!response.ok) {
-                throw new Error('Apps Script returned ' + response.status);
-            }
-            return response.text().then(function(text) {
-                if (!text) {
-                    return {};
-                }
-                try {
-                    return JSON.parse(text);
-                } catch (err) {
-                    throw new Error('Invalid JSON response from Apps Script');
-                }
-            });
-        }).then(function(data) {
-            const normalizedData = Array.isArray(data) ? data : (data && data.bookings ? data.bookings : []);
-            bookedSlots = normalizedData || [];
-            const remoteSlots = Array.isArray(data && data.timeSlots) ? data.timeSlots : [];
-            adminTimeSlotsData = mergeTimeSlots(getStoredTimeSlots(), remoteSlots);
-            persistTimeSlots(adminTimeSlotsData);
+        return new Promise(function(resolve) {
+            window.onDataLoaded = function(data) {
+                const normalizedData = Array.isArray(data) ? data : (data && data.bookings ? data.bookings : []);
+                bookedSlots = normalizedData || [];
+                const remoteSlots = Array.isArray(data && data.timeSlots) ? data.timeSlots : [];
+                adminTimeSlotsData = mergeTimeSlots(getStoredTimeSlots(), remoteSlots);
+                persistTimeSlots(adminTimeSlotsData);
 
-            if (refreshMainSchedule) {
-                buildSchedule('washerTable', 'washerSlot');
-                buildSchedule('dryerTable', 'dryerSlot');
-            }
-            return true;
-        }).catch(function(err) {
-            console.error("Failed to load schedule data from Google Sheets.", err);
-            showWarningModal("The schedule service is unavailable right now. Please re-publish the Apps Script project and refresh the page.");
-            return false;
+                if (refreshMainSchedule) {
+                    buildSchedule('washerTable', 'washerSlot');
+                    buildSchedule('dryerTable', 'dryerSlot');
+                }
+                resolve(true);
+            };
+
+            const script = document.createElement('script');
+            script.src = GOOGLE_SCRIPT_URL + "?action=getScheduleData&callback=onDataLoaded&t=" + Date.now();
+            script.onerror = () => {
+                console.error("Failed to load schedule data from Google Sheets.");
+                showWarningModal("Could not load schedule data. Please check your connection and refresh the page.");
+                resolve(false);
+            };
+            script.onload = () => {
+                document.body.removeChild(script);
+            };
+            document.body.appendChild(script);
         });
     }
 
@@ -1439,19 +1454,20 @@
             return;
         }
 
-        return fetch(GOOGLE_SCRIPT_URL + '?action=getAdminData', {
-            method: 'GET',
-            headers: { 'Accept': 'application/json' }
-        }).then(function(response) {
-            return response.json().catch(function() { return []; });
-        }).then(function(data) {
-            existingBookingReferences = Array.isArray(data) ? data : (data || []);
+        window.onReferenceDataLoaded = function(data) {
+            existingBookingReferences = data || [];
             callback(existingBookingReferences);
-            return existingBookingReferences;
-        }).catch(function() {
+        };
+
+        const script = document.createElement('script');
+        script.src = GOOGLE_SCRIPT_URL + "?action=getAdminData&callback=onReferenceDataLoaded&t=" + Date.now();
+        script.onerror = () => {
             callback(null);
-            return null;
-        });
+        };
+        script.onload = () => {
+            document.body.removeChild(script);
+        };
+        document.body.appendChild(script);
     }
 
     function checkReferenceDuplicate(referenceValue, callback) {
@@ -1746,12 +1762,18 @@
             washer: Number(document.getElementById('washerPriceInput').value || DEFAULT_WASHER_PRICE),
             dryer: Number(document.getElementById('dryerPriceInput').value || DEFAULT_DRYER_PRICE)
         };
-        persistPrices(nextPrices).then(function() {
-            washerPrice = nextPrices.washer;
-            dryerPrice = nextPrices.dryer;
-            applyPricingToUI();
-            closePricingModal();
-            showWarningModal('Pricing updated successfully.', 'Success');
+        persistPrices(nextPrices).then(function(result) {
+            if (result && result.success !== false) {
+                washerPrice = nextPrices.washer;
+                dryerPrice = nextPrices.dryer;
+                applyPricingToUI();
+                closePricingModal();
+                showWarningModal('Pricing updated successfully.', 'Success');
+                return loadPricesFromServer();
+            }
+            showWarningModal('Could not save pricing. Please try again.');
+        }).catch(function() {
+            showWarningModal('Could not save pricing. Please try again.');
         });
     });
 
@@ -1875,25 +1897,19 @@
 
             lastBookingData = formData; // Save for email functionality
 
-            fetch(GOOGLE_SCRIPT_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        action: 'saveBooking',
-                        ...formData
-                    })
-                }).then(function(response) {
-                    return response.json().catch(function() { return { success: true }; });
-                }).then(function(result) {
-                    if (result && result.success === false) {
-                        throw new Error(result.error || 'Save failed');
-                    }
-                    return loadScheduleDataFromServer(true);
-                }).then(() => {
+            postToScript({
+                action: 'saveBooking',
+                ...formData
+            }).then(function(result) {
+                if (result && result.success !== false) {
+                    loadScheduleDataFromServer(true);
                     populateReceipt();
                     document.getElementById('paymentScreen').classList.add('hidden');
                     document.getElementById('receiptScreen').classList.remove('hidden');
-                }).catch(err => {
+                } else {
+                    throw new Error('Booking save failed');
+                }
+            }).catch(err => {
                 showWarningModal("Something went wrong. Please check your connection and try again.");
                 btn.disabled = false;
                 btn.innerText = "Confirm Booking";
@@ -1924,6 +1940,27 @@
     let adminTimeSlotsData = getStoredTimeSlots();
     let editingSlotId = null;
     let isSavingSlot = false;
+    let refreshTimer = null;
+
+    function refreshAdminData() {
+        return Promise.all([
+            loadAdminData(),
+            loadAdminSlots(),
+            loadPricesFromServer()
+        ]);
+    }
+
+    function startAutoRefresh() {
+        if (refreshTimer) {
+            clearInterval(refreshTimer);
+        }
+        refreshTimer = setInterval(function() {
+            const adminPanel = document.getElementById('adminPanel');
+            if (adminPanel && !adminPanel.classList.contains('hidden')) {
+                refreshAdminData().catch(function() {});
+            }
+        }, 5000);
+    }
 
     function showAdminLogin() { document.getElementById('adminLoginModal').classList.remove('hidden'); }
     function hideAdminLogin() { document.getElementById('adminLoginModal').classList.add('hidden'); }
@@ -1939,7 +1976,9 @@
                 document.querySelector('.admin-icon').classList.add('hidden');
                 document.querySelector('.container').classList.add('hidden');
                 document.getElementById('adminPanel').classList.remove('hidden');
-                loadAdminData();
+                refreshAdminData().then(function() {
+                    startAutoRefresh();
+                });
             } else {
                 showWarningModal('Invalid credentials. Please try again.');
             }
@@ -1992,23 +2031,18 @@
                 return;
             }
 
-            fetch(GOOGLE_SCRIPT_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'changeAdminPassword',
-                    currentPassword: currentPassword,
-                    newPassword: newPassword
-                })
-            }).then(function(response) {
-                return response.json().catch(function() { return { success: true }; });
+            postToScript({
+                action: 'changeAdminPassword',
+                currentPassword: currentPassword,
+                newPassword: newPassword
             }).then(function(result) {
-                if (result && result.success === false) {
-                    throw new Error(result.error || 'Password update failed');
+                if (result && result.success !== false) {
+                    adminPassword = newPassword;
+                    closePasswordModal();
+                    showWarningModal('Admin password updated successfully.', 'Success');
+                } else {
+                    throw new Error('Password change failed');
                 }
-                adminPassword = newPassword;
-                closePasswordModal();
-                showWarningModal('Admin password updated successfully.', 'Success');
             }).catch(() => {
                 showWarningModal('Could not update password. Please try again.');
             });
@@ -2018,44 +2052,52 @@
     function loadAdminData() {
         const tbody = document.getElementById('adminBookingsTable').querySelector('tbody');
         tbody.innerHTML = '<tr><td colspan="7">Loading bookings...</td></tr>';
-        
-        fetch(GOOGLE_SCRIPT_URL + '?action=getAdminData', {
-            method: 'GET',
-            headers: { 'Accept': 'application/json' }
-        }).then(function(response) {
-            return response.json().catch(function() { return []; });
-        }).then(function(data) {
-            adminBookingsData = Array.isArray(data) ? data : (data || []);
-            existingBookingReferences = adminBookingsData;
 
-            adminBookingsData.forEach(function(booking) {
-                booking.timestamp_date = new Date(booking.timestamp);
-            });
-            sortAndRenderAdminTable('desc');
-        }).catch(function() {
-            tbody.innerHTML = '<tr><td colspan="7">Failed to load data.</td></tr>';
+        return new Promise(function(resolve) {
+            window.onAdminBookingsLoaded = function(data) {
+                adminBookingsData = Array.isArray(data) ? data : [];
+                existingBookingReferences = adminBookingsData;
+
+                adminBookingsData.forEach(function(booking) {
+                    booking.timestamp_date = new Date(booking.timestamp);
+                });
+                sortAndRenderAdminTable('desc');
+                resolve(adminBookingsData);
+            };
+
+            const script = document.createElement('script');
+            script.src = GOOGLE_SCRIPT_URL + "?action=getAdminData&callback=onAdminBookingsLoaded&t=" + Date.now();
+            script.onerror = () => {
+                tbody.innerHTML = '<tr><td colspan="7">Failed to load data.</td></tr>';
+                resolve([]);
+            };
+            script.onload = () => { document.body.removeChild(script); };
+            document.body.appendChild(script);
         });
-
-        loadAdminSlots();
     }
 
     function loadAdminSlots() {
         const tbody = document.getElementById('adminSlotsTable').querySelector('tbody');
         tbody.innerHTML = '<tr><td colspan="3">Loading slots...</td></tr>';
 
-        fetch(GOOGLE_SCRIPT_URL + '?action=getTimeSlots', {
-            method: 'GET',
-            headers: { 'Accept': 'application/json' }
-        }).then(function(response) {
-            return response.json().catch(function() { return {}; });
-        }).then(function(data) {
-            const remoteSlots = (data && data.timeSlots) ? data.timeSlots : [];
-            adminTimeSlotsData = mergeTimeSlots(getStoredTimeSlots(), remoteSlots);
-            persistTimeSlots(adminTimeSlotsData);
-            renderAdminSlots();
-            populateSlotSelect();
-        }).catch(function() {
-            tbody.innerHTML = '<tr><td colspan="3">Failed to load slots.</td></tr>';
+        return new Promise(function(resolve) {
+            window.onAdminSlotsLoaded = function(data) {
+                const remoteSlots = (data && data.timeSlots) ? data.timeSlots : [];
+                adminTimeSlotsData = mergeTimeSlots(getStoredTimeSlots(), remoteSlots);
+                persistTimeSlots(adminTimeSlotsData);
+                renderAdminSlots();
+                populateSlotSelect();
+                resolve(adminTimeSlotsData);
+            };
+
+            const script = document.createElement('script');
+            script.src = GOOGLE_SCRIPT_URL + "?action=getTimeSlots&callback=onAdminSlotsLoaded&t=" + Date.now();
+            script.onerror = () => {
+                tbody.innerHTML = '<tr><td colspan="3">Failed to load slots.</td></tr>';
+                resolve([]);
+            };
+            script.onload = () => { document.body.removeChild(script); };
+            document.body.appendChild(script);
         });
     }
 
@@ -2262,34 +2304,27 @@
         populateSlotSelect();
         refreshBookingSchedule();
 
-        fetch(GOOGLE_SCRIPT_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                action: 'manageTimeSlots',
-                mode: 'add',
-                slotId: newSlotId,
-                slotDate: slotDate,
-                slotTime: slotTime,
-                slotVisibleDays: visibleDays.join(',')
-            })
-        }).then(function(response) {
-            if (!response.ok) {
-                throw new Error('Apps Script returned ' + response.status);
-            }
-            return response.json().catch(function() { return { success: true }; });
+        postToScript({
+            action: 'manageTimeSlots',
+            mode: 'add',
+            slotId: newSlotId,
+            slotDate: slotDate,
+            slotTime: slotTime,
+            slotVisibleDays: visibleDays.join(',')
         }).then(function(result) {
-            if (result && result.success === false) {
-                throw new Error(result.error || 'Save failed');
+            if (result && result.success !== false) {
+                closeSlotModal();
+                return Promise.all([
+                    loadAdminSlots(),
+                    loadScheduleDataFromServer(true)
+                ]).then(function() {
+                    showWarningModal('Future slot added successfully.', 'Success');
+                });
             }
+            throw new Error('Slot add failed');
+        }).catch(() => {
             closeSlotModal();
-            return Promise.all([loadAdminSlots(), loadScheduleDataFromServer(true)]);
-        }).then(() => {
-            showWarningModal('Future slot added successfully.', 'Success');
-        }).catch(function(err) {
-            closeSlotModal();
-            console.error(err);
-            showWarningModal('Slot save failed. The Apps Script endpoint did not accept the request. Please re-publish the script and try again.');
+            showWarningModal('Slot saved locally, but the sync to Apps Script did not complete.');
         }).finally(() => {
             isSavingSlot = false;
             setSlotActionBusy(false);
@@ -2326,34 +2361,27 @@
         populateSlotSelect();
         refreshBookingSchedule();
 
-        fetch(GOOGLE_SCRIPT_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                action: 'manageTimeSlots',
-                mode: 'edit',
-                slotId: editingSlotId,
-                slotDate: slotDate,
-                slotTime: slotTime,
-                slotVisibleDays: visibleDays.join(',')
-            })
-        }).then(function(response) {
-            if (!response.ok) {
-                throw new Error('Apps Script returned ' + response.status);
-            }
-            return response.json().catch(function() { return { success: true }; });
+        postToScript({
+            action: 'manageTimeSlots',
+            mode: 'edit',
+            slotId: editingSlotId,
+            slotDate: slotDate,
+            slotTime: slotTime,
+            slotVisibleDays: visibleDays.join(',')
         }).then(function(result) {
-            if (result && result.success === false) {
-                throw new Error(result.error || 'Save failed');
+            if (result && result.success !== false) {
+                closeSlotModal();
+                return Promise.all([
+                    loadAdminSlots(),
+                    loadScheduleDataFromServer(true)
+                ]).then(function() {
+                    showWarningModal('Future slot updated successfully.', 'Success');
+                });
             }
+            throw new Error('Slot edit failed');
+        }).catch(() => {
             closeSlotModal();
-            return Promise.all([loadAdminSlots(), loadScheduleDataFromServer(true)]);
-        }).then(() => {
-            showWarningModal('Future slot updated successfully.', 'Success');
-        }).catch(function(err) {
-            closeSlotModal();
-            console.error(err);
-            showWarningModal('Slot update failed. The Apps Script endpoint did not accept the request. Please re-publish the script and try again.');
+            showWarningModal('Slot updated locally, but the sync to Apps Script did not complete.');
         }).finally(() => {
             isSavingSlot = false;
             setSlotActionBusy(false);
@@ -2368,31 +2396,24 @@
         populateSlotSelect();
         refreshBookingSchedule();
 
-        fetch(GOOGLE_SCRIPT_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                action: 'manageTimeSlots',
-                mode: 'delete',
-                slotId: slotId
-            })
-        }).then(function(response) {
-            if (!response.ok) {
-                throw new Error('Apps Script returned ' + response.status);
-            }
-            return response.json().catch(function() { return { success: true }; });
+        postToScript({
+            action: 'manageTimeSlots',
+            mode: 'delete',
+            slotId: slotId
         }).then(function(result) {
-            if (result && result.success === false) {
-                throw new Error(result.error || 'Delete failed');
+            if (result && result.success !== false) {
+                closeSlotModal();
+                return Promise.all([
+                    loadAdminSlots(),
+                    loadScheduleDataFromServer(true)
+                ]).then(function() {
+                    showWarningModal('Future slot deleted successfully.', 'Success');
+                });
             }
+            throw new Error('Slot delete failed');
+        }).catch(() => {
             closeSlotModal();
-            return Promise.all([loadAdminSlots(), loadScheduleDataFromServer(true)]);
-        }).then(() => {
-            showWarningModal('Future slot deleted successfully.', 'Success');
-        }).catch(function(err) {
-            closeSlotModal();
-            console.error(err);
-            showWarningModal('Slot delete failed. The Apps Script endpoint did not accept the request. Please re-publish the script and try again.');
+            showWarningModal('Slot removed locally, but the sync to Apps Script did not complete.');
         });
     }
 
