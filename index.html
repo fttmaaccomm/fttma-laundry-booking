@@ -538,13 +538,17 @@
         .warning-modal {
             position: fixed;
             inset: 0;
-            z-index: 2147483647;
+            z-index: 2147483646;
             display: none;
             align-items: center;
             justify-content: center;
             padding: 20px;
             background: rgba(15, 23, 42, 0.6);
             backdrop-filter: blur(8px);
+        }
+
+        #warningModal {
+            z-index: 2147483647;
         }
 
         .warning-modal.show {
@@ -554,7 +558,7 @@
         .loading-overlay {
             position: fixed;
             inset: 0;
-            z-index: 2147483646;
+            z-index: 2147483645;
             display: none;
             align-items: center;
             justify-content: center;
@@ -2724,4 +2728,3 @@
 
 </body>
 </html>
-
