@@ -1200,7 +1200,7 @@
 </div>
 
 <script>
-    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxdr_B85KTVqaMlAwGIcRl4pGonXE3mxnHCcQ5oNktNUlFFhIKEl_YJaAfYKe41Jqsdwg/exec"; // <-- Make sure this is your latest URL
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzAEpacwQH2D47eBmysFWiCAM0XODw7rzfQ3sAPFVncskuVvvVKaDRZKAeY3CpiS3n1ug/exec"; // <-- Make sure this is your latest URL
     
     const DEFAULT_WASHER_PRICE = 60;
     const DEFAULT_DRYER_PRICE = 60;
@@ -1212,23 +1212,23 @@
     let dryerPrice = DEFAULT_DRYER_PRICE;
 
     function postToScript(payload) {
+        const searchParams = new URLSearchParams();
+        Object.keys(payload || {}).forEach(function(key) {
+            const value = payload[key];
+            if (value !== undefined && value !== null) {
+                searchParams.append(key, String(value));
+            }
+        });
+
         return fetch(GOOGLE_SCRIPT_URL, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        }).then(function(response) {
-            if (!response.ok) {
-                return response.text().then(function(text) {
-                    throw new Error(text || 'Request failed');
-                });
-            }
-            return response.text();
-        }).then(function(text) {
-            try {
-                return JSON.parse(text);
-            } catch (err) {
-                return { success: true, raw: text };
-            }
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+            body: searchParams.toString()
+        }).then(function() {
+            return { success: true };
+        }).catch(function() {
+            return { success: false };
         });
     }
 
