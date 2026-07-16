@@ -1416,18 +1416,20 @@
     let bookedSlots = [];
     let existingBookingReferences = [];
 
-    let pendingOperationCount = 0;
+    let loadingActive = false;
 
     function showLoading(message = 'Please wait while the request is being completed.') {
         document.getElementById('loadingMessage').textContent = message;
-        document.getElementById('loadingOverlay').classList.add('show');
-        pendingOperationCount += 1;
+        if (!loadingActive) {
+            document.getElementById('loadingOverlay').classList.add('show');
+            loadingActive = true;
+        }
     }
 
     function hideLoading() {
-        pendingOperationCount = Math.max(0, pendingOperationCount - 1);
-        if (pendingOperationCount === 0) {
+        if (loadingActive) {
             document.getElementById('loadingOverlay').classList.remove('show');
+            loadingActive = false;
         }
     }
 
@@ -2559,6 +2561,7 @@
         }).finally(function() {
             isSavingSlot = false;
             setSlotActionBusy(false);
+            hideLoading();
         });
     }
 
