@@ -1204,9 +1204,7 @@
     
     const DEFAULT_WASHER_PRICE = 60;
     const DEFAULT_DRYER_PRICE = 60;
-    const PRICE_STORAGE_KEY = 'laundryServicePrices';
     const ADMIN_USERNAME = 'admin';
-    const TIME_SLOT_STORAGE_KEY = 'laundryAdminTimeSlots';
     let adminPassword = null;
     let washerPrice = DEFAULT_WASHER_PRICE;
     let dryerPrice = DEFAULT_DRYER_PRICE;
@@ -1233,30 +1231,17 @@
     }
 
     function getStoredTimeSlots() {
-        try {
-            const saved = localStorage.getItem(TIME_SLOT_STORAGE_KEY);
-            return saved ? JSON.parse(saved) : [];
-        } catch (err) {
-            return [];
-        }
+        return [];
     }
 
     function getStoredPrices() {
-        try {
-            const saved = localStorage.getItem(PRICE_STORAGE_KEY);
-            if (!saved) return { washer: DEFAULT_WASHER_PRICE, dryer: DEFAULT_DRYER_PRICE };
-            const parsed = JSON.parse(saved);
-            return {
-                washer: Number(parsed && parsed.washer !== undefined ? parsed.washer : DEFAULT_WASHER_PRICE),
-                dryer: Number(parsed && parsed.dryer !== undefined ? parsed.dryer : DEFAULT_DRYER_PRICE)
-            };
-        } catch (err) {
-            return { washer: DEFAULT_WASHER_PRICE, dryer: DEFAULT_DRYER_PRICE };
-        }
+        return {
+            washer: DEFAULT_WASHER_PRICE,
+            dryer: DEFAULT_DRYER_PRICE
+        };
     }
 
     function persistPrices(prices) {
-        localStorage.setItem(PRICE_STORAGE_KEY, JSON.stringify(prices));
         return postToScript({
             action: 'savePricing',
             washer: prices.washer,
@@ -1273,7 +1258,6 @@
                     washer: Number(data && data.washer !== undefined ? data.washer : DEFAULT_WASHER_PRICE),
                     dryer: Number(data && data.dryer !== undefined ? data.dryer : DEFAULT_DRYER_PRICE)
                 };
-                localStorage.setItem(PRICE_STORAGE_KEY, JSON.stringify(nextPrices));
                 washerPrice = nextPrices.washer;
                 dryerPrice = nextPrices.dryer;
                 applyPricingToUI();
@@ -1300,7 +1284,10 @@
     }
 
     function applyPricingToUI() {
-        const priceValues = getStoredPrices();
+        const priceValues = {
+            washer: Number.isFinite(washerPrice) ? washerPrice : DEFAULT_WASHER_PRICE,
+            dryer: Number.isFinite(dryerPrice) ? dryerPrice : DEFAULT_DRYER_PRICE
+        };
         washerPrice = Number.isFinite(priceValues.washer) ? priceValues.washer : DEFAULT_WASHER_PRICE;
         dryerPrice = Number.isFinite(priceValues.dryer) ? priceValues.dryer : DEFAULT_DRYER_PRICE;
         const washerInput = document.getElementById('washerPriceInput');
@@ -1315,22 +1302,13 @@
         if (bothLabel) bothLabel.textContent = `(₱${(washerPrice + dryerPrice).toFixed(2)})`;
     }
 
-    function persistTimeSlots(slots) {
-        try {
-            localStorage.setItem(TIME_SLOT_STORAGE_KEY, JSON.stringify(slots || []));
-        } catch (err) {
-            console.warn('Could not save time slots locally.', err);
-        }
+    function persistTimeSlots() {
+        return null;
     }
 
-    function mergeTimeSlots(localSlots, remoteSlots) {
+    function mergeTimeSlots(remoteSlots) {
         const remoteList = Array.isArray(remoteSlots) ? remoteSlots : [];
-        if (remoteList.length > 0) {
-            return remoteList.map(slot => ({ ...slot }));
-        }
-
-        const localList = Array.isArray(localSlots) ? localSlots : [];
-        return localList.map(slot => ({ ...slot }));
+        return remoteList.map(slot => ({ ...slot }));
     }
 
     function loadAdminPassword(callback) {
@@ -1401,8 +1379,7 @@
                 const normalizedData = Array.isArray(data) ? data : (data && data.bookings ? data.bookings : []);
                 bookedSlots = normalizedData || [];
                 const remoteSlots = Array.isArray(data && data.timeSlots) ? data.timeSlots : [];
-                adminTimeSlotsData = mergeTimeSlots(getStoredTimeSlots(), remoteSlots);
-                persistTimeSlots(adminTimeSlotsData);
+                adminTimeSlotsData = mergeTimeSlots(remoteSlots);
 
                 if (refreshMainSchedule) {
                     buildSchedule('washerTable', 'washerSlot');
@@ -1941,13 +1918,20 @@
     let editingSlotId = null;
     let isSavingSlot = false;
     let refreshTimer = null;
+    let adminDataLoadInProgress = false;
 
     function refreshAdminData() {
+        if (adminDataLoadInProgress) {
+            return Promise.resolve();
+        }
+        adminDataLoadInProgress = true;
         return Promise.all([
             loadAdminData(),
             loadAdminSlots(),
             loadPricesFromServer()
-        ]);
+        ]).finally(function() {
+            adminDataLoadInProgress = false;
+        });
     }
 
     function startAutoRefresh() {
@@ -2051,7 +2035,9 @@
 
     function loadAdminData() {
         const tbody = document.getElementById('adminBookingsTable').querySelector('tbody');
-        tbody.innerHTML = '<tr><td colspan="7">Loading bookings...</td></tr>';
+        if (!tbody.dataset.initialized) {
+            tbody.innerHTML = '<tr><td colspan="7">Loading bookings...</td></tr>';
+        }
 
         return new Promise(function(resolve) {
             window.onAdminBookingsLoaded = function(data) {
@@ -2061,6 +2047,7 @@
                 adminBookingsData.forEach(function(booking) {
                     booking.timestamp_date = new Date(booking.timestamp);
                 });
+                tbody.dataset.initialized = 'true';
                 sortAndRenderAdminTable('desc');
                 resolve(adminBookingsData);
             };
@@ -2078,13 +2065,15 @@
 
     function loadAdminSlots() {
         const tbody = document.getElementById('adminSlotsTable').querySelector('tbody');
-        tbody.innerHTML = '<tr><td colspan="3">Loading slots...</td></tr>';
+        if (!tbody.dataset.initialized) {
+            tbody.innerHTML = '<tr><td colspan="3">Loading slots...</td></tr>';
+        }
 
         return new Promise(function(resolve) {
             window.onAdminSlotsLoaded = function(data) {
                 const remoteSlots = (data && data.timeSlots) ? data.timeSlots : [];
-                adminTimeSlotsData = mergeTimeSlots(getStoredTimeSlots(), remoteSlots);
-                persistTimeSlots(adminTimeSlotsData);
+                adminTimeSlotsData = mergeTimeSlots(remoteSlots);
+                tbody.dataset.initialized = 'true';
                 renderAdminSlots();
                 populateSlotSelect();
                 resolve(adminTimeSlotsData);
@@ -2299,7 +2288,6 @@
             status: 'active'
         };
         adminTimeSlotsData = [...adminTimeSlotsData, newSlot];
-        persistTimeSlots(adminTimeSlotsData);
         renderAdminSlots();
         populateSlotSelect();
         refreshBookingSchedule();
@@ -2356,7 +2344,6 @@
             }
             return slot;
         });
-        persistTimeSlots(adminTimeSlotsData);
         renderAdminSlots();
         populateSlotSelect();
         refreshBookingSchedule();
@@ -2389,9 +2376,12 @@
     }
 
     function deleteSlot(slotId) {
-        if (!slotId) return;
+        if (!slotId || isSavingSlot) return;
+        isSavingSlot = true;
+        setSlotActionBusy(true);
+
+        const previousSlots = adminTimeSlotsData;
         adminTimeSlotsData = adminTimeSlotsData.filter(slot => String(slot.id) !== String(slotId));
-        persistTimeSlots(adminTimeSlotsData);
         renderAdminSlots();
         populateSlotSelect();
         refreshBookingSchedule();
@@ -2410,10 +2400,21 @@
                     showWarningModal('Future slot deleted successfully.', 'Success');
                 });
             }
+            adminTimeSlotsData = previousSlots;
+            renderAdminSlots();
+            populateSlotSelect();
+            refreshBookingSchedule();
             throw new Error('Slot delete failed');
         }).catch(() => {
+            adminTimeSlotsData = previousSlots;
+            renderAdminSlots();
+            populateSlotSelect();
+            refreshBookingSchedule();
             closeSlotModal();
-            showWarningModal('Slot removed locally, but the sync to Apps Script did not complete.');
+            showWarningModal('Slot could not be deleted. Please try again.');
+        }).finally(function() {
+            isSavingSlot = false;
+            setSlotActionBusy(false);
         });
     }
 
