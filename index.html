@@ -1424,7 +1424,7 @@
                 const visibleDays = getSlotVisibleDays(slot);
                 const isDayRestricted = Boolean(visibleDays.length);
                 const isAvailableForDay = isSlotAvailableForDay(slot, currentDayNormalized);
-                const displayLabel = visibleDays.length ? `${slotTime} (${getSlotDayLabel(slot)})` : slotTime;
+                const displayLabel = slotTime;
 
                 if (isAlreadyBooked) {
                     slotsCell.innerHTML += `<button type="button" class="time-slot-btn" style="background: #e74c3c; color: white; border-color: #e74c3c; cursor: not-allowed;" disabled>BOOKED 🔒</button><div style="margin-bottom:6px;"></div>`;
