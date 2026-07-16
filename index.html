@@ -2262,6 +2262,9 @@
                 slotVisibleDays: visibleDays.join(',')
             })
         }).then(function(response) {
+            if (!response.ok) {
+                throw new Error('Apps Script returned ' + response.status);
+            }
             return response.json().catch(function() { return { success: true }; });
         }).then(function(result) {
             if (result && result.success === false) {
@@ -2271,9 +2274,10 @@
             return Promise.all([loadAdminSlots(), loadScheduleDataFromServer(true)]);
         }).then(() => {
             showWarningModal('Future slot added successfully.', 'Success');
-        }).catch(() => {
+        }).catch(function(err) {
             closeSlotModal();
-            showWarningModal('Slot saved locally, but the sync to Apps Script did not complete.');
+            console.error(err);
+            showWarningModal('Slot save failed. The Apps Script endpoint did not accept the request. Please re-publish the script and try again.');
         }).finally(() => {
             isSavingSlot = false;
             setSlotActionBusy(false);
@@ -2322,6 +2326,9 @@
                 slotVisibleDays: visibleDays.join(',')
             })
         }).then(function(response) {
+            if (!response.ok) {
+                throw new Error('Apps Script returned ' + response.status);
+            }
             return response.json().catch(function() { return { success: true }; });
         }).then(function(result) {
             if (result && result.success === false) {
@@ -2331,9 +2338,10 @@
             return Promise.all([loadAdminSlots(), loadScheduleDataFromServer(true)]);
         }).then(() => {
             showWarningModal('Future slot updated successfully.', 'Success');
-        }).catch(() => {
+        }).catch(function(err) {
             closeSlotModal();
-            showWarningModal('Slot updated locally, but the sync to Apps Script did not complete.');
+            console.error(err);
+            showWarningModal('Slot update failed. The Apps Script endpoint did not accept the request. Please re-publish the script and try again.');
         }).finally(() => {
             isSavingSlot = false;
             setSlotActionBusy(false);
@@ -2357,6 +2365,9 @@
                 slotId: slotId
             })
         }).then(function(response) {
+            if (!response.ok) {
+                throw new Error('Apps Script returned ' + response.status);
+            }
             return response.json().catch(function() { return { success: true }; });
         }).then(function(result) {
             if (result && result.success === false) {
@@ -2366,9 +2377,10 @@
             return Promise.all([loadAdminSlots(), loadScheduleDataFromServer(true)]);
         }).then(() => {
             showWarningModal('Future slot deleted successfully.', 'Success');
-        }).catch(() => {
+        }).catch(function(err) {
             closeSlotModal();
-            showWarningModal('Slot removed locally, but the sync to Apps Script did not complete.');
+            console.error(err);
+            showWarningModal('Slot delete failed. The Apps Script endpoint did not accept the request. Please re-publish the script and try again.');
         });
     }
 
