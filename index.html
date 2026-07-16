@@ -898,15 +898,15 @@
                         <div class="radio-tile-group vertical">
                             <div>
                                 <input type="radio" id="rentWasher" name="rented" value="Washer" required onclick="toggleSchedules()">
-                                <label for="rentWasher" class="radio-label">Washer <span id="washerPriceLabel">(₱60.00)</span></label>
+                                <label for="rentWasher" class="radio-label">Washer <span id="washerPriceLabel"></span></label>
                             </div>
                             <div>
                                 <input type="radio" id="rentDryer" name="rented" value="Dryer" onclick="toggleSchedules()">
-                                <label for="rentDryer" class="radio-label">Dryer <span id="dryerPriceLabel">(₱60.00)</span></label>
+                                <label for="rentDryer" class="radio-label">Dryer <span id="dryerPriceLabel"></span></label>
                             </div>
                             <div>
                                 <input type="radio" id="rentBoth" name="rented" value="Both" onclick="toggleSchedules()">
-                                <label for="rentBoth" class="radio-label">Both <span id="bothPriceLabel">(₱120.00)</span></label>
+                                <label for="rentBoth" class="radio-label">Both <span id="bothPriceLabel"></span></label>
                             </div>
                         </div>
                     </div>
@@ -1200,7 +1200,7 @@
 </div>
 
 <script>
-    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwubuxN5TGGaNa78ckASXKKa-FMvN9tT1EAGUGqXkGy1RZ5x-YNgJqCT2RfdL27BAXnmw/exec"; // <-- Make sure this is your latest URL
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyWtBG92oYdtb8TtlTvHLa62SJVgseYxAPsYf_CgA6ucez8cS2RPZe-P00q4OslRC93aw/exec"; // <-- Make sure this is your latest URL
     
     const DEFAULT_WASHER_PRICE = 60;
     const DEFAULT_DRYER_PRICE = 60;
@@ -1235,11 +1235,56 @@
     }
 
     function persistPrices(prices) {
-        try {
-            localStorage.setItem(PRICE_STORAGE_KEY, JSON.stringify(prices));
-        } catch (err) {
-            console.warn('Could not save pricing locally.', err);
-        }
+        localStorage.setItem(PRICE_STORAGE_KEY, JSON.stringify(prices));
+        return new Promise(function(resolve) {
+            const callbackName = 'onPricingSaved' + Date.now();
+            window[callbackName] = function(data) {
+                delete window[callbackName];
+                resolve(data);
+            };
+
+            const script = document.createElement('script');
+            script.src = GOOGLE_SCRIPT_URL + "?action=savePricing&callback=" + callbackName + "&washer=" + encodeURIComponent(prices.washer) + "&dryer=" + encodeURIComponent(prices.dryer) + "&t=" + Date.now();
+            script.onerror = function() {
+                delete window[callbackName];
+                resolve({ success: false });
+            };
+            script.onload = function() {
+                document.body.removeChild(script);
+            };
+            document.body.appendChild(script);
+        });
+    }
+
+    function loadPricesFromServer(callback) {
+        const callbackName = 'onPricesLoaded' + Date.now();
+        window[callbackName] = function(data) {
+            delete window[callbackName];
+            const nextPrices = {
+                washer: Number(data && data.washer !== undefined ? data.washer : DEFAULT_WASHER_PRICE),
+                dryer: Number(data && data.dryer !== undefined ? data.dryer : DEFAULT_DRYER_PRICE)
+            };
+            localStorage.setItem(PRICE_STORAGE_KEY, JSON.stringify(nextPrices));
+            washerPrice = nextPrices.washer;
+            dryerPrice = nextPrices.dryer;
+            applyPricingToUI();
+            if (callback) callback(nextPrices);
+        };
+
+        const script = document.createElement('script');
+        script.src = GOOGLE_SCRIPT_URL + "?action=getPricing&callback=" + callbackName + "&t=" + Date.now();
+        script.onerror = function() {
+            delete window[callbackName];
+            const fallbackPrices = getStoredPrices();
+            washerPrice = fallbackPrices.washer;
+            dryerPrice = fallbackPrices.dryer;
+            applyPricingToUI();
+            if (callback) callback(fallbackPrices);
+        };
+        script.onload = function() {
+            document.body.removeChild(script);
+        };
+        document.body.appendChild(script);
     }
 
     function applyPricingToUI() {
@@ -1400,6 +1445,7 @@
         washerPrice = pricingValues.washer;
         dryerPrice = pricingValues.dryer;
         applyPricingToUI();
+        loadPricesFromServer();
         loadScheduleDataFromServer(true);
 
         // Start the inactivity timer when the page loads
@@ -1731,12 +1777,13 @@
             washer: Number(document.getElementById('washerPriceInput').value || DEFAULT_WASHER_PRICE),
             dryer: Number(document.getElementById('dryerPriceInput').value || DEFAULT_DRYER_PRICE)
         };
-        persistPrices(nextPrices);
-        washerPrice = nextPrices.washer;
-        dryerPrice = nextPrices.dryer;
-        applyPricingToUI();
-        closePricingModal();
-        showWarningModal('Pricing updated successfully.', 'Success');
+        persistPrices(nextPrices).then(function() {
+            washerPrice = nextPrices.washer;
+            dryerPrice = nextPrices.dryer;
+            applyPricingToUI();
+            closePricingModal();
+            showWarningModal('Pricing updated successfully.', 'Success');
+        });
     });
 
     document.getElementById('closePricingModalBtn').addEventListener('click', closePricingModal);
