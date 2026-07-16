@@ -1312,40 +1312,13 @@
     }
 
     function mergeTimeSlots(localSlots, remoteSlots) {
-        const localList = Array.isArray(localSlots) ? localSlots : [];
         const remoteList = Array.isArray(remoteSlots) ? remoteSlots : [];
-        const merged = [];
-        const remoteById = new Map();
+        if (remoteList.length > 0) {
+            return remoteList.map(slot => ({ ...slot }));
+        }
 
-        remoteList.forEach(slot => {
-            if (slot && (slot.id || slot.id === 0)) {
-                remoteById.set(String(slot.id), { ...slot });
-            }
-        });
-
-        localList.forEach(slot => {
-            if (!slot) return;
-            const slotKey = slot.id === undefined || slot.id === null || slot.id === '' ? null : String(slot.id);
-            const remoteSlot = slotKey ? remoteById.get(slotKey) : null;
-            if (remoteSlot) {
-                merged.push({
-                    ...remoteSlot,
-                    ...slot,
-                    id: slot.id ?? remoteSlot.id,
-                    slot_date: slot.slot_date !== undefined ? slot.slot_date : remoteSlot.slot_date,
-                    slot_time: slot.slot_time !== undefined ? slot.slot_time : remoteSlot.slot_time,
-                    slot_visible_days: slot.slot_visible_days !== undefined ? slot.slot_visible_days : remoteSlot.slot_visible_days,
-                    slot_weekend_type: slot.slot_weekend_type !== undefined ? slot.slot_weekend_type : remoteSlot.slot_weekend_type,
-                    status: slot.status !== undefined ? slot.status : remoteSlot.status
-                });
-                remoteById.delete(slotKey);
-            } else {
-                merged.push({ ...slot });
-            }
-        });
-
-        remoteById.forEach(slot => merged.push({ ...slot }));
-        return merged;
+        const localList = Array.isArray(localSlots) ? localSlots : [];
+        return localList.map(slot => ({ ...slot }));
     }
 
     function loadAdminPassword(callback) {
