@@ -1200,7 +1200,7 @@
 </div>
 
 <script>
-    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxdr_B85KTVqaMlAwGIcRl4pGonXE3mxnHCcQ5oNktNUlFFhIKEl_YJaAfYKe41Jqsdwg/exec"; // <-- Make sure this is your latest URL
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzh4_3VexU8u43_oMxFmemi6Qh6U5xSNFAD2F6Sb1M47LHoJ9c3bteg6jpHlPIKkNebWg/exec"; // <-- Make sure this is your latest URL
     
     const DEFAULT_WASHER_PRICE = 60;
     const DEFAULT_DRYER_PRICE = 60;
@@ -1236,30 +1236,28 @@
 
     function persistPrices(prices) {
         localStorage.setItem(PRICE_STORAGE_KEY, JSON.stringify(prices));
-        return new Promise(function(resolve) {
-            const callbackName = 'onPricingSaved' + Date.now();
-            window[callbackName] = function(data) {
-                delete window[callbackName];
-                resolve(data);
-            };
-
-            const script = document.createElement('script');
-            script.src = GOOGLE_SCRIPT_URL + "?action=savePricing&callback=" + callbackName + "&washer=" + encodeURIComponent(prices.washer) + "&dryer=" + encodeURIComponent(prices.dryer) + "&t=" + Date.now();
-            script.onerror = function() {
-                delete window[callbackName];
-                resolve({ success: false });
-            };
-            script.onload = function() {
-                document.body.removeChild(script);
-            };
-            document.body.appendChild(script);
+        return fetch(GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'savePricing',
+                washer: prices.washer,
+                dryer: prices.dryer
+            })
+        }).then(function(response) {
+            return response.json().catch(function() { return {}; });
+        }).catch(function() {
+            return { success: false };
         });
     }
 
     function loadPricesFromServer(callback) {
-        const callbackName = 'onPricesLoaded' + Date.now();
-        window[callbackName] = function(data) {
-            delete window[callbackName];
+        return fetch(GOOGLE_SCRIPT_URL + '?action=getPricing', {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' }
+        }).then(function(response) {
+            return response.json().catch(function() { return {}; });
+        }).then(function(data) {
             const nextPrices = {
                 washer: Number(data && data.washer !== undefined ? data.washer : DEFAULT_WASHER_PRICE),
                 dryer: Number(data && data.dryer !== undefined ? data.dryer : DEFAULT_DRYER_PRICE)
@@ -1269,22 +1267,15 @@
             dryerPrice = nextPrices.dryer;
             applyPricingToUI();
             if (callback) callback(nextPrices);
-        };
-
-        const script = document.createElement('script');
-        script.src = GOOGLE_SCRIPT_URL + "?action=getPricing&callback=" + callbackName + "&t=" + Date.now();
-        script.onerror = function() {
-            delete window[callbackName];
+            return nextPrices;
+        }).catch(function() {
             const fallbackPrices = getStoredPrices();
             washerPrice = fallbackPrices.washer;
             dryerPrice = fallbackPrices.dryer;
             applyPricingToUI();
             if (callback) callback(fallbackPrices);
-        };
-        script.onload = function() {
-            document.body.removeChild(script);
-        };
-        document.body.appendChild(script);
+            return fallbackPrices;
+        });
     }
 
     function applyPricingToUI() {
@@ -1327,21 +1318,20 @@
             return;
         }
 
-        window.onAdminPasswordLoaded = function(data) {
+        return fetch(GOOGLE_SCRIPT_URL + '?action=getAdminConfig', {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' }
+        }).then(function(response) {
+            return response.json().catch(function() { return {}; });
+        }).then(function(data) {
             adminPassword = data && data.password ? data.password : 'password123';
             callback(adminPassword);
-        };
-
-        const script = document.createElement('script');
-        script.src = GOOGLE_SCRIPT_URL + "?action=getAdminConfig&callback=onAdminPasswordLoaded&t=" + Date.now();
-        script.onerror = () => {
+            return adminPassword;
+        }).catch(function() {
             adminPassword = 'password123';
             callback(adminPassword);
-        };
-        script.onload = () => {
-            document.body.removeChild(script);
-        };
-        document.body.appendChild(script);
+            return adminPassword;
+        });
     }
 
     let lastBookingData = {}; // To store the data for the email receipt
@@ -1384,32 +1374,27 @@
     let inactivityTimer;
 
     function loadScheduleDataFromServer(refreshMainSchedule = true) {
-        return new Promise(function(resolve) {
-            window.onDataLoaded = function(data) {
-                const normalizedData = Array.isArray(data) ? data : (data && data.bookings ? data.bookings : []);
-                bookedSlots = normalizedData || [];
-                const remoteSlots = Array.isArray(data && data.timeSlots) ? data.timeSlots : [];
-                adminTimeSlotsData = mergeTimeSlots(getStoredTimeSlots(), remoteSlots);
-                persistTimeSlots(adminTimeSlotsData);
+        return fetch(GOOGLE_SCRIPT_URL + '?action=getScheduleData', {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' }
+        }).then(function(response) {
+            return response.json().catch(function() { return {}; });
+        }).then(function(data) {
+            const normalizedData = Array.isArray(data) ? data : (data && data.bookings ? data.bookings : []);
+            bookedSlots = normalizedData || [];
+            const remoteSlots = Array.isArray(data && data.timeSlots) ? data.timeSlots : [];
+            adminTimeSlotsData = mergeTimeSlots(getStoredTimeSlots(), remoteSlots);
+            persistTimeSlots(adminTimeSlotsData);
 
-                if (refreshMainSchedule) {
-                    buildSchedule('washerTable', 'washerSlot');
-                    buildSchedule('dryerTable', 'dryerSlot');
-                }
-                resolve(true);
-            };
-
-            const script = document.createElement('script');
-            script.src = GOOGLE_SCRIPT_URL + "?action=getScheduleData&callback=onDataLoaded&t=" + Date.now();
-            script.onerror = () => {
-                console.error("Failed to load schedule data from Google Sheets.");
-                showWarningModal("Could not load schedule data. Please check your connection and refresh the page.");
-                resolve(false);
-            };
-            script.onload = () => {
-                document.body.removeChild(script);
-            };
-            document.body.appendChild(script);
+            if (refreshMainSchedule) {
+                buildSchedule('washerTable', 'washerSlot');
+                buildSchedule('dryerTable', 'dryerSlot');
+            }
+            return true;
+        }).catch(function() {
+            console.error("Failed to load schedule data from Google Sheets.");
+            showWarningModal("Could not load schedule data. Please check your connection and refresh the page.");
+            return false;
         });
     }
 
@@ -1442,20 +1427,19 @@
             return;
         }
 
-        window.onReferenceDataLoaded = function(data) {
-            existingBookingReferences = data || [];
+        return fetch(GOOGLE_SCRIPT_URL + '?action=getAdminData', {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' }
+        }).then(function(response) {
+            return response.json().catch(function() { return []; });
+        }).then(function(data) {
+            existingBookingReferences = Array.isArray(data) ? data : (data || []);
             callback(existingBookingReferences);
-        };
-
-        const script = document.createElement('script');
-        script.src = GOOGLE_SCRIPT_URL + "?action=getAdminData&callback=onReferenceDataLoaded&t=" + Date.now();
-        script.onerror = () => {
+            return existingBookingReferences;
+        }).catch(function() {
             callback(null);
-        };
-        script.onload = () => {
-            document.body.removeChild(script);
-        };
-        document.body.appendChild(script);
+            return null;
+        });
     }
 
     function checkReferenceDuplicate(referenceValue, callback) {
@@ -1881,14 +1865,19 @@
 
             fetch(GOOGLE_SCRIPT_URL, {
                     method: 'POST',
-                    mode: 'no-cors',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         action: 'saveBooking',
                         ...formData
                     })
+                }).then(function(response) {
+                    return response.json().catch(function() { return { success: true }; });
+                }).then(function(result) {
+                    if (result && result.success === false) {
+                        throw new Error(result.error || 'Save failed');
+                    }
+                    return loadScheduleDataFromServer(true);
                 }).then(() => {
-                    // On success, populate and show the receipt screen
                     populateReceipt();
                     document.getElementById('paymentScreen').classList.add('hidden');
                     document.getElementById('receiptScreen').classList.remove('hidden');
@@ -1993,14 +1982,18 @@
 
             fetch(GOOGLE_SCRIPT_URL, {
                 method: 'POST',
-                mode: 'no-cors',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     action: 'changeAdminPassword',
                     currentPassword: currentPassword,
                     newPassword: newPassword
                 })
-            }).then(() => {
+            }).then(function(response) {
+                return response.json().catch(function() { return { success: true }; });
+            }).then(function(result) {
+                if (result && result.success === false) {
+                    throw new Error(result.error || 'Password update failed');
+                }
                 adminPassword = newPassword;
                 closePasswordModal();
                 showWarningModal('Admin password updated successfully.', 'Success');
@@ -2014,21 +2007,22 @@
         const tbody = document.getElementById('adminBookingsTable').querySelector('tbody');
         tbody.innerHTML = '<tr><td colspan="7">Loading bookings...</td></tr>';
         
-        window.onAdminBookingsLoaded = function(data) {
-            adminBookingsData = data || [];
-            existingBookingReferences = data || [];
+        fetch(GOOGLE_SCRIPT_URL + '?action=getAdminData', {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' }
+        }).then(function(response) {
+            return response.json().catch(function() { return []; });
+        }).then(function(data) {
+            adminBookingsData = Array.isArray(data) ? data : (data || []);
+            existingBookingReferences = adminBookingsData;
 
-            adminBookingsData.forEach(booking => {
+            adminBookingsData.forEach(function(booking) {
                 booking.timestamp_date = new Date(booking.timestamp);
             });
             sortAndRenderAdminTable('desc');
-        };
-
-        const script = document.createElement('script');
-        script.src = GOOGLE_SCRIPT_URL + "?action=getAdminData&callback=onAdminBookingsLoaded&t=" + Date.now();
-        script.onerror = () => { tbody.innerHTML = '<tr><td colspan="7">Failed to load data.</td></tr>'; };
-        script.onload = () => { document.body.removeChild(script); };
-        document.body.appendChild(script);
+        }).catch(function() {
+            tbody.innerHTML = '<tr><td colspan="7">Failed to load data.</td></tr>';
+        });
 
         loadAdminSlots();
     }
@@ -2037,19 +2031,20 @@
         const tbody = document.getElementById('adminSlotsTable').querySelector('tbody');
         tbody.innerHTML = '<tr><td colspan="3">Loading slots...</td></tr>';
 
-        window.onAdminSlotsLoaded = function(data) {
+        fetch(GOOGLE_SCRIPT_URL + '?action=getTimeSlots', {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' }
+        }).then(function(response) {
+            return response.json().catch(function() { return {}; });
+        }).then(function(data) {
             const remoteSlots = (data && data.timeSlots) ? data.timeSlots : [];
             adminTimeSlotsData = mergeTimeSlots(getStoredTimeSlots(), remoteSlots);
             persistTimeSlots(adminTimeSlotsData);
             renderAdminSlots();
             populateSlotSelect();
-        };
-
-        const script = document.createElement('script');
-        script.src = GOOGLE_SCRIPT_URL + "?action=getTimeSlots&callback=onAdminSlotsLoaded&t=" + Date.now();
-        script.onerror = () => { tbody.innerHTML = '<tr><td colspan="3">Failed to load slots.</td></tr>'; };
-        script.onload = () => { document.body.removeChild(script); };
-        document.body.appendChild(script);
+        }).catch(function() {
+            tbody.innerHTML = '<tr><td colspan="3">Failed to load slots.</td></tr>';
+        });
     }
 
     function normalizeSlotDateValue(value) {
@@ -2257,7 +2252,6 @@
 
         fetch(GOOGLE_SCRIPT_URL, {
             method: 'POST',
-            mode: 'no-cors',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 action: 'manageTimeSlots',
@@ -2267,10 +2261,15 @@
                 slotTime: slotTime,
                 slotVisibleDays: visibleDays.join(',')
             })
-        }).then(() => {
+        }).then(function(response) {
+            return response.json().catch(function() { return { success: true }; });
+        }).then(function(result) {
+            if (result && result.success === false) {
+                throw new Error(result.error || 'Save failed');
+            }
             closeSlotModal();
-            loadAdminSlots();
-            loadScheduleDataFromServer(true);
+            return Promise.all([loadAdminSlots(), loadScheduleDataFromServer(true)]);
+        }).then(() => {
             showWarningModal('Future slot added successfully.', 'Success');
         }).catch(() => {
             closeSlotModal();
@@ -2313,7 +2312,6 @@
 
         fetch(GOOGLE_SCRIPT_URL, {
             method: 'POST',
-            mode: 'no-cors',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 action: 'manageTimeSlots',
@@ -2323,10 +2321,15 @@
                 slotTime: slotTime,
                 slotVisibleDays: visibleDays.join(',')
             })
-        }).then(() => {
+        }).then(function(response) {
+            return response.json().catch(function() { return { success: true }; });
+        }).then(function(result) {
+            if (result && result.success === false) {
+                throw new Error(result.error || 'Save failed');
+            }
             closeSlotModal();
-            loadAdminSlots();
-            loadScheduleDataFromServer(true);
+            return Promise.all([loadAdminSlots(), loadScheduleDataFromServer(true)]);
+        }).then(() => {
             showWarningModal('Future slot updated successfully.', 'Success');
         }).catch(() => {
             closeSlotModal();
@@ -2347,17 +2350,21 @@
 
         fetch(GOOGLE_SCRIPT_URL, {
             method: 'POST',
-            mode: 'no-cors',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 action: 'manageTimeSlots',
                 mode: 'delete',
                 slotId: slotId
             })
-        }).then(() => {
+        }).then(function(response) {
+            return response.json().catch(function() { return { success: true }; });
+        }).then(function(result) {
+            if (result && result.success === false) {
+                throw new Error(result.error || 'Delete failed');
+            }
             closeSlotModal();
-            loadAdminSlots();
-            loadScheduleDataFromServer(true);
+            return Promise.all([loadAdminSlots(), loadScheduleDataFromServer(true)]);
+        }).then(() => {
             showWarningModal('Future slot deleted successfully.', 'Success');
         }).catch(() => {
             closeSlotModal();
