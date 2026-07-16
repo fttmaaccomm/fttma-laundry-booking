@@ -16,6 +16,8 @@
             --bg: #f4f7f6;
             --text: #1f2937;
             --muted: #6b7280;
+            --pastel-text: #7b8ca8;
+            --pastel-text-strong: #60708a;
             --panel: rgba(255, 255, 255, 0.72);
             --panel-strong: rgba(255, 255, 255, 0.86);
             --border: rgba(255, 255, 255, 0.45);
@@ -80,7 +82,25 @@
         }
 
         h2 { text-align: center; margin-bottom: 20px; color: var(--primary); font-size: 1.65rem; }
-        h3 { border-bottom: 1px solid rgba(15, 23, 42, 0.08); padding-bottom: 8px; margin-top: 24px; color: #1f2937; }
+        h3 { border-bottom: 1px solid rgba(15, 23, 42, 0.08); padding-bottom: 8px; margin-top: 24px; color: var(--pastel-text-strong); }
+        .card-header {
+            margin-bottom: 16px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(123, 140, 168, 0.25);
+        }
+        .card-header-title {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 800;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: rgb(47, 129, 237);
+        }
+        .card-header-subtitle {
+            margin: 4px 0 0;
+            color: var(--pastel-text);
+            font-size: 0.9rem;
+        }
 
         .form-layout {
             display: flex;
@@ -116,7 +136,7 @@
             max-height: calc(100vh - 180px);
             flex-shrink: 0;
             scrollbar-width: thin;
-            scrollbar-color: rgba(47, 128, 237, 0.35) transparent;
+            scrollbar-color: rgba(31, 33, 36, 0.634) transparent;
         }
         .schedule-column {
             justify-content: flex-start;
@@ -129,8 +149,8 @@
         .schedule-column { flex: 1.5; }
 
         .form-group { margin-bottom: 18px; }
-        label, .group-title { display: block; margin-bottom: 6px; font-weight: 600; font-size: 14px; color: #374151; }
-        .group-title { margin-top: 0; color: var(--text); }
+        label, .group-title { display: block; margin-bottom: 6px; font-weight: 600; font-size: 14px; color: var(--pastel-text-strong); }
+        .group-title { margin-top: 0; color: var(--pastel-text-strong); }
         input, select {
             width: 100%;
             padding: 12px 14px;
@@ -198,7 +218,7 @@
             min-height: 0;
             border-radius: 12px;
             scrollbar-width: thin;
-            scrollbar-color: rgba(47, 128, 237, 0.32) transparent;
+            scrollbar-color: rgba(31, 33, 36, 0.634) transparent;
         }
         .schedule-column .table-responsive {
             min-height: 240px;
@@ -315,15 +335,15 @@
 
         button.btn-action {
             width: 100%;
-            padding: 14px;
+            padding: 12px 14px;
             color: white;
             border: none;
             border-radius: 999px;
-            font-size: 16px;
+            font-size: 14px;
             font-weight: 700;
             cursor: pointer;
             transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-            margin-top: 15px;
+            margin-top: 12px;
             box-shadow: 0 8px 20px rgba(0, 0, 0, 0.16);
         }
         .btn-blue { background: linear-gradient(135deg, var(--primary), #4f8ef7); }
@@ -341,6 +361,17 @@
         .btn-secondary:hover {
             background: linear-gradient(135deg, #475569, #334155);
             transform: translateY(-2px);
+        }
+        .btn-cancel {
+            background: #585858;
+            color: #ef4444;
+            border: 1px solid #fbc7c7;
+            box-shadow: 0 6px 16px rgba(239, 68, 68, 0.12);
+        }
+        .btn-cancel:hover {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            box-shadow: 0 12px 24px rgba(239, 68, 68, 0.22);
         }
         .btn-danger { background: linear-gradient(135deg, #ef4444, #dc2626); }
         .btn-danger:hover {
@@ -367,7 +398,7 @@
         }
         .form-actions {
             display: flex;
-            gap: 15px;
+            gap: 10px;
             margin-top: 0;
             padding: 0;
             border: none;
@@ -382,8 +413,8 @@
         .success-card { text-align: center; padding: 20px; }
         .payment-actions {
             display: flex;
-            gap: 15px;
-            margin-top: 25px;
+            gap: 10px;
+            margin-top: 20px;
         }
 
         .form-actions-mobile {
@@ -563,7 +594,7 @@
             padding: 4px;
             border: 1px solid rgba(226, 232, 240, 0.7);
             scrollbar-width: thin;
-            scrollbar-color: rgba(47, 128, 237, 0.32) transparent;
+            scrollbar-color: rgba(31, 33, 36, 0.634) transparent;
         }
 
         .input-column::-webkit-scrollbar,
@@ -591,19 +622,52 @@
             background-clip: padding-box;
         }
 
+        .admin-panel-shell {
+            max-width: 1280px;
+            margin: 24px auto;
+            padding: 0;
+        }
+        .admin-panel-card {
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(20px) saturate(140%);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            border-radius: 24px;
+            padding: 24px;
+            box-shadow: 0 20px 45px rgba(15, 23, 42, 0.16);
+        }
         .admin-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 20px;
             gap: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+        }
+        .admin-eyebrow {
+            margin: 0 0 4px;
+            color: #2563eb;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+        .admin-title {
+            margin: 0;
+            color: #0f172a;
+            font-size: 1.7rem;
+            text-align: left;
         }
         .admin-controls {
             display: flex;
             flex-wrap: wrap;
-            gap: 15px;
+            gap: 12px;
             margin-bottom: 20px;
             align-items: center;
+            padding: 16px;
+            border-radius: 18px;
+            background: rgba(248, 250, 252, 0.8);
+            border: 1px solid rgba(226, 232, 240, 0.8);
         }
         .admin-controls .btn-action {
             width: auto;
@@ -615,10 +679,66 @@
             align-items: center;
             border-radius: 999px;
             font-size: 14px;
-            box-shadow: 0 6px 16px rgba(15, 23, 42, 0.12);
+            box-shadow: 0 6px 16px rgba(37, 99, 235, 0.14);
         }
+        .admin-controls input[type="text"],
         .admin-controls input[type="date"] {
             width: auto;
+            min-width: 180px;
+            flex: 1;
+        }
+        .admin-section-card {
+            background: rgba(248, 250, 252, 0.72);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            border-radius: 18px;
+            padding: 16px;
+            margin-bottom: 18px;
+        }
+        .admin-section-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .admin-section-head h3 {
+            margin: 0;
+            border: none;
+            color: #0f172a;
+            font-size: 1rem;
+        }
+        .admin-section-head span {
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: #64748b;
+        }
+        .admin-panel-card .btn-action {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            border: none;
+        }
+        .admin-panel-card .btn-action:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 12px 24px rgba(37, 99, 235, 0.2);
+        }
+        .admin-panel-card .btn-action.btn-secondary {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        }
+        .admin-panel-card .btn-action.btn-green {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+        }
+        .admin-panel-card .btn-action.btn-danger {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+        }
+        #adminSettingsMenu {
+            background: rgba(255, 255, 255, 0.97);
+            border: 1px solid rgba(226, 232, 240, 0.9);
+            border-radius: 14px;
+            box-shadow: 0 16px 28px rgba(15, 23, 42, 0.14);
+            padding: 8px;
+            min-width: 180px;
+            z-index: 20;
         }
         .weekend-toggle-row {
             display: flex;
@@ -656,6 +776,9 @@
                 <!-- Inputs -->
                 <div class="input-stack">
                 <div class="input-column">
+                    <div class="card-header">
+                        <h3 class="card-header-title">Information</h3>
+                    </div>
                     <div class="form-group">
                         <p class="group-title">Gender</p>
                         <div class="radio-tile-group vertical">
@@ -707,6 +830,9 @@
 
                 <!-- Schedules -->
                 <div class="schedule-column">
+                    <div class="card-header">
+                        <h3 class="card-header-title">Time Slot</h3>
+                    </div>
                     <div id="washerScheduleSection" class="schedule-section disabled">
                         <h3>Washer Time Slot</h3>
                         <div class="table-responsive">
@@ -749,8 +875,8 @@
             <div class="summary-item"><strong>Room Number:</strong> <span id="reviewRoom"></span></div>
             <div class="summary-item"><strong>Service Needed:</strong> <span id="reviewRented"></span></div>
             <div class="summary-item"><strong>Price:</strong> <span id="reviewPrice"></span></div>
-            <div class="summary-item"><strong>Washer Slot:</strong> <span id="reviewWasherTime"></span></div>
-            <div class="summary-item"><strong>Dryer Slot:</strong> <span id="reviewDryerTime"></span></div>
+            <div class="summary-item"><strong>Washer:</strong> <span id="reviewWasherTime"></span></div>
+            <div class="summary-item"><strong>Dryer:</strong> <span id="reviewDryerTime"></span></div>
         </div>
 
         <form id="paymentForm">
@@ -844,9 +970,14 @@
         <h3 id="slotModalTitle" class="warning-title">Manage Time Slots</h3>
         <p style="margin: 0 0 12px; color: #475569;">Choose an existing slot to edit or delete, or add a new one here.</p>
         <div class="weekend-toggle-row">
-            <span style="color: #475569;">Weekend:</span>
-            <button type="button" class="weekend-choice-btn" id="saturdayBtn">Saturday</button>
-            <button type="button" class="weekend-choice-btn" id="sundayBtn">Sunday</button>
+            <span style="color: #475569;">Visible on days:</span>
+            <button type="button" class="weekend-choice-btn" id="mondayBtn">Mon</button>
+            <button type="button" class="weekend-choice-btn" id="tuesdayBtn">Tue</button>
+            <button type="button" class="weekend-choice-btn" id="wednesdayBtn">Wed</button>
+            <button type="button" class="weekend-choice-btn" id="thursdayBtn">Thu</button>
+            <button type="button" class="weekend-choice-btn" id="fridayBtn">Fri</button>
+            <button type="button" class="weekend-choice-btn" id="saturdayBtn">Sat</button>
+            <button type="button" class="weekend-choice-btn" id="sundayBtn">Sun</button>
         </div>
         <div class="form-group" style="margin-bottom: 10px;">
             <label for="slotSelect">Existing Slots</label>
@@ -893,48 +1024,69 @@
 </div>
 
 <!-- ADMIN PANEL -->
-<div id="adminPanel" class="hidden" style="background: white; padding: 30px; border-radius: 12px; max-width: 1200px; margin: 20px auto;">
-    <div class="admin-header">
-        <h2>Admin Panel - All Bookings</h2>
-        <div style="position: relative;">
-            <button type="button" id="adminSettingsToggle" class="btn-action btn-secondary" style="margin-top: 0; width: auto; padding: 10px 16px; display: inline-flex; align-items: center; gap: 8px;">
-                <span style="font-size: 16px;">⚙️</span>
-            </button>
-            <div id="adminSettingsMenu" style="display: none; position: absolute; right: 0; top: calc(100% + 8px); background: rgba(255, 255, 255, 0); border: 0px solid rgba(226, 232, 240, 0); border-radius: 12px; box-shadow: 0 12px 24px rgba(15,23,42,0.12); padding: 8px; min-width: 180px; z-index: 20;">
-                <button type="button" id="openPasswordModalBtn" class="btn-action btn-green" style="width: 100%; margin-top: 0; padding: 10px 12px; display: inline-flex; align-items: center; gap: 8px; justify-content: center;">Change Password</button>
-                <button type="button" id="adminLogoutBtn" class="btn-action btn-secondary" style="width: 100%; margin-top: 8px; padding: 10px 12px;">Logout</button>
+<div id="adminPanel" class="hidden admin-panel-shell">
+    <div class="admin-panel-card">
+        <div class="admin-header">
+            <div>
+                <p class="admin-eyebrow">Dashboard</p>
+                <h2 class="admin-title">Admin Panel</h2>
+            </div>
+            <div style="position: relative;">
+                <button type="button" id="adminSettingsToggle" class="btn-action btn-secondary" style="margin-top: 0; width: auto; padding: 10px 16px; display: inline-flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 16px;">⚙️</span>
+                </button>
+                <div id="adminSettingsMenu" style="display: none; position: absolute; right: 0; top: calc(100% + 8px);">
+                    <button type="button" id="openPasswordModalBtn" class="btn-action" style="width: 100%; margin-top: 0; padding: 10px 12px; display: inline-flex; align-items: center; gap: 8px; justify-content: center;">Change Password</button>
+                    <button type="button" id="adminLogoutBtn" class="btn-action btn-secondary" style="width: 100%; margin-top: 8px; padding: 10px 12px;">Logout</button>
+                </div>
             </div>
         </div>
-    </div>
-    <div class="admin-controls">
-        <input type="text" id="adminSearch" placeholder="Search bookings..." style="flex-grow: 1;">
-        <input type="date" id="startDate">
-        <span>to</span>
-        <input type="date" id="endDate">
-        <button type="button" id="filterBtn" class="btn-action btn-blue admin-action-btn" style="width: auto; padding: 12px 20px; margin-top: 0;">Filter</button>
-        <button type="button" id="resetBtn" class="btn-action btn-secondary admin-action-btn" style="width: auto; padding: 12px 20px; margin-top: 0;">Reset</button>
-        <button type="button" id="downloadPdfBtn" class="btn-action btn-green admin-action-btn" style="width: auto; padding: 12px 20px; margin-top: 0;">Download PDF</button>
-        <button type="button" id="openSlotModalBtn" class="btn-action btn-blue admin-action-btn" style="width: auto; padding: 12px 20px; margin-top: 0;">Timeslot Edit</button>
-    </div>
-    <div class="admin-table-container">
-        <table id="adminBookingsTable">
-            <thead><tr><th id="timestampHeader" style="cursor: pointer;">Timestamp 🔽</th><th>Name</th><th>Room</th><th>Service</th><th>Washer Slot</th><th>Dryer Slot</th><th>Reference</th></tr></thead>
-            <tbody><tr><td colspan="7">Loading bookings...</td></tr></tbody>
-        </table>
-    </div>
-    <div style="margin: 20px 0 10px; padding: 18px; border: 1px solid rgba(226,232,240,0.8); border-radius: 14px; background: rgba(248,250,252,0.75);">
-        <h3 style="margin-top: 0;">Current Available Slots</h3>
-        <div class="admin-table-container" style="max-height: 260px; margin-top: 12px;">
-            <table id="adminSlotsTable">
-                <thead><tr><th>Date</th><th>Time</th></tr></thead>
-                <tbody><tr><td colspan="2">Loading slots...</td></tr></tbody>
-            </table>
+
+        <div class="admin-controls">
+            <div style="display:flex; gap:10px; flex:1; flex-wrap:wrap; align-items:center;">
+                <input type="text" id="adminSearch" placeholder="Search bookings..." style="flex-grow: 1; min-width: 220px;">
+                <input type="date" id="startDate">
+                <span style="color:#64748b; font-weight:600;">to</span>
+                <input type="date" id="endDate">
+            </div>
+            <div style="display:flex; flex-wrap:wrap; gap:10px;">
+                <button type="button" id="filterBtn" class="btn-action admin-action-btn" style="width: auto; padding: 12px 18px; margin-top: 0;">Filter</button>
+                <button type="button" id="resetBtn" class="btn-action btn-secondary admin-action-btn" style="width: auto; padding: 12px 18px; margin-top: 0;">Reset</button>
+                <button type="button" id="downloadPdfBtn" class="btn-action admin-action-btn" style="width: auto; padding: 12px 18px; margin-top: 0;">Download PDF</button>
+                <button type="button" id="openSlotModalBtn" class="btn-action admin-action-btn" style="width: auto; padding: 12px 18px; margin-top: 0;">Timeslot</button>
+            </div>
+        </div>
+
+        <div class="admin-section-card">
+            <div class="admin-section-head">
+                <h3>Bookings</h3>
+                <span>All reservations</span>
+            </div>
+            <div class="admin-table-container">
+                <table id="adminBookingsTable">
+                    <thead><tr><th id="timestampHeader" style="cursor: pointer;">Timestamp 🔽</th><th>Name</th><th>Room</th><th>Service</th><th>Washer Slot</th><th>Dryer Slot</th><th>Reference</th></tr></thead>
+                    <tbody><tr><td colspan="7">Loading bookings...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="admin-section-card">
+            <div class="admin-section-head">
+                <h3>Current Available Slots</h3>
+                <span>Upcoming schedule</span>
+            </div>
+            <div class="admin-table-container" style="max-height: 260px; margin-top: 12px;">
+                <table id="adminSlotsTable">
+                    <thead><tr><th>Date</th><th>Time</th></tr></thead>
+                    <tbody><tr><td colspan="2">Loading slots...</td></tr></tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
-    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxFtIgJhDYCPpkD0yKuv1H0YnMaPHFe-M-8Tp7cuG9SBHVzcpNsw06PGa6SyAdpaLZRfw/exec"; // <-- Make sure this is your latest URL
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwubuxN5TGGaNa78ckASXKKa-FMvN9tT1EAGUGqXkGy1RZ5x-YNgJqCT2RfdL27BAXnmw/exec"; // <-- Make sure this is your latest URL
     
     const LAUNDRY_PRICE = 60;
     const ADMIN_USERNAME = 'admin';
@@ -959,13 +1111,40 @@
     }
 
     function mergeTimeSlots(localSlots, remoteSlots) {
-        const remoteList = Array.isArray(remoteSlots) ? remoteSlots : [];
-        if (remoteList.length > 0) {
-            return remoteList.map(slot => ({ ...slot }));
-        }
-
         const localList = Array.isArray(localSlots) ? localSlots : [];
-        return localList.map(slot => ({ ...slot }));
+        const remoteList = Array.isArray(remoteSlots) ? remoteSlots : [];
+        const merged = [];
+        const remoteById = new Map();
+
+        remoteList.forEach(slot => {
+            if (slot && (slot.id || slot.id === 0)) {
+                remoteById.set(String(slot.id), { ...slot });
+            }
+        });
+
+        localList.forEach(slot => {
+            if (!slot) return;
+            const slotKey = slot.id === undefined || slot.id === null || slot.id === '' ? null : String(slot.id);
+            const remoteSlot = slotKey ? remoteById.get(slotKey) : null;
+            if (remoteSlot) {
+                merged.push({
+                    ...remoteSlot,
+                    ...slot,
+                    id: slot.id ?? remoteSlot.id,
+                    slot_date: slot.slot_date !== undefined ? slot.slot_date : remoteSlot.slot_date,
+                    slot_time: slot.slot_time !== undefined ? slot.slot_time : remoteSlot.slot_time,
+                    slot_visible_days: slot.slot_visible_days !== undefined ? slot.slot_visible_days : remoteSlot.slot_visible_days,
+                    slot_weekend_type: slot.slot_weekend_type !== undefined ? slot.slot_weekend_type : remoteSlot.slot_weekend_type,
+                    status: slot.status !== undefined ? slot.status : remoteSlot.status
+                });
+                remoteById.delete(slotKey);
+            } else {
+                merged.push({ ...slot });
+            }
+        });
+
+        remoteById.forEach(slot => merged.push({ ...slot }));
+        return merged;
     }
 
     function loadAdminPassword(callback) {
@@ -1018,33 +1197,38 @@
     }
     let inactivityTimer;
 
-    // Reverted to hardcoded time slots
-    const operatingHours = [
-        
-    ];
+    function loadScheduleDataFromServer(refreshMainSchedule = true) {
+        return new Promise(function(resolve) {
+            window.onDataLoaded = function(data) {
+                const normalizedData = Array.isArray(data) ? data : (data && data.bookings ? data.bookings : []);
+                bookedSlots = normalizedData || [];
+                const remoteSlots = Array.isArray(data && data.timeSlots) ? data.timeSlots : [];
+                adminTimeSlotsData = mergeTimeSlots(getStoredTimeSlots(), remoteSlots);
+                persistTimeSlots(adminTimeSlotsData);
+
+                if (refreshMainSchedule) {
+                    buildSchedule('washerTable', 'washerSlot');
+                    buildSchedule('dryerTable', 'dryerSlot');
+                }
+                resolve(true);
+            };
+
+            const script = document.createElement('script');
+            script.src = GOOGLE_SCRIPT_URL + "?action=getScheduleData&callback=onDataLoaded&t=" + Date.now();
+            script.onerror = () => {
+                console.error("Failed to load schedule data from Google Sheets.");
+                showWarningModal("Could not load schedule data. Please check your connection and refresh the page.");
+                resolve(false);
+            };
+            script.onload = () => {
+                document.body.removeChild(script);
+            };
+            document.body.appendChild(script);
+        });
+    }
 
     window.onload = function() {
-        window.onDataLoaded = function(data) {
-            const normalizedData = Array.isArray(data) ? data : (data && data.bookings ? data.bookings : []);
-            bookedSlots = normalizedData || [];
-            const remoteSlots = Array.isArray(data && data.timeSlots) ? data.timeSlots : [];
-            adminTimeSlotsData = mergeTimeSlots(getStoredTimeSlots(), remoteSlots);
-            persistTimeSlots(adminTimeSlotsData);
-
-            buildSchedule('washerTable', 'washerSlot');
-            buildSchedule('dryerTable', 'dryerSlot');
-        };
-
-        const script = document.createElement('script');
-        script.src = GOOGLE_SCRIPT_URL + "?action=getScheduleData&callback=onDataLoaded&t=" + Date.now();
-        script.onerror = () => {
-            console.error("Failed to load schedule data from Google Sheets.");
-            showWarningModal("Could not load schedule data. Please check your connection and refresh the page.");
-        };
-        script.onload = () => {
-            document.body.removeChild(script);
-        };
-        document.body.appendChild(script);
+        loadScheduleDataFromServer(true);
 
         // Start the inactivity timer when the page loads
         resetInactivityTimer();
@@ -1104,15 +1288,69 @@
         });
     }
 
-    function getSlotWeekendType(slot) {
-        return String(slot && slot.slot_weekend_type ? slot.slot_weekend_type : '').trim().toLowerCase();
+    function getSlotVisibleDays(slot) {
+        const value = String(slot && slot.slot_visible_days ? slot.slot_visible_days : '').trim();
+        if (!value) {
+            const weekendType = String(slot && slot.slot_weekend_type ? slot.slot_weekend_type : '').trim().toLowerCase();
+            return weekendType ? [weekendType] : [];
+        }
+        return value.split(',').map(day => day.trim().toLowerCase()).filter(Boolean);
+    }
+
+    function getSlotDayLabel(slot) {
+        const visibleDays = getSlotVisibleDays(slot);
+        if (!visibleDays.length) return '';
+        const labels = visibleDays.map(day => day.charAt(0).toUpperCase() + day.slice(1));
+        return labels.join(', ');
     }
 
     function isSlotAvailableForDay(slot, currentDayNormalized) {
-        const weekendType = getSlotWeekendType(slot);
-        if (!weekendType) return true;
+        const visibleDays = getSlotVisibleDays(slot);
+        if (!visibleDays.length) return true;
         const day = currentDayNormalized.getDay();
-        return weekendType === 'saturday' ? day === 6 : day === 0;
+        const dayNameMap = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+        return visibleDays.includes(dayNameMap[day]);
+    }
+
+    function parseSlotDateValue(value) {
+        if (!value && value !== 0) return null;
+        if (value instanceof Date) return value;
+
+        const text = String(value || '').trim();
+        if (!text) return null;
+
+        const dateOnlyMatch = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+        if (dateOnlyMatch) {
+            const [_, year, month, day] = dateOnlyMatch;
+            return new Date(Number(year), Number(month) - 1, Number(day));
+        }
+
+        const slashMatch = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+        if (slashMatch) {
+            const [_, month, day, year] = slashMatch;
+            return new Date(Number(year), Number(month) - 1, Number(day));
+        }
+
+        const monthNameMatch = text.match(/([A-Za-z]{3,9})\s+(\d{1,2}),?\s+(\d{4})/i);
+        if (monthNameMatch) {
+            const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+            const monthIndex = monthNames.indexOf(monthNameMatch[1].slice(0, 3).toLowerCase());
+            if (monthIndex >= 0) {
+                return new Date(Number(monthNameMatch[3]), monthIndex, Number(monthNameMatch[2]));
+            }
+        }
+
+        const parsed = new Date(text);
+        return Number.isNaN(parsed.getTime()) ? null : parsed;
+    }
+
+    function getDateKey(value) {
+        const parsed = parseSlotDateValue(value);
+        if (!parsed) return null;
+        const year = parsed.getFullYear();
+        const month = String(parsed.getMonth() + 1).padStart(2, '0');
+        const day = String(parsed.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
     }
 
     function buildSchedule(tableId, classPrefix) {
@@ -1142,27 +1380,39 @@
 
             let timesToRender = [];
             if (adminTimeSlotsData && adminTimeSlotsData.length > 0) {
-                const uniqueTimes = new Map();
-                adminTimeSlotsData.forEach(slot => {
+                const slotsWithTime = adminTimeSlotsData
+                    .filter(slot => String(slot.slot_time || '').trim())
+                    .sort((a, b) => String(a.slot_time || '').localeCompare(String(b.slot_time || '')));
+
+                const currentDateKey = getDateKey(currentDayNormalized);
+                const currentDayName = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][currentDayNormalized.getDay()];
+
+                const matchingSlots = slotsWithTime.filter(slot => {
                     const slotDate = String(slot.slot_date || '').trim();
-                    const slotTime = String(slot.slot_time || '').trim();
-                    if (!slotTime) return;
-
-                    if (!slotDate) {
-                        uniqueTimes.set(slotTime, slot);
-                        return;
+                    if (slotDate) {
+                        const slotDateKey = getDateKey(slotDate);
+                        if (!slotDateKey) return false;
+                        return slotDateKey === currentDateKey;
                     }
 
-                    const slotDateValue = new Date(slotDate + 'T00:00:00');
-                    if (!Number.isNaN(slotDateValue.getTime()) && slotDateValue >= startDayNormalized) {
-                        uniqueTimes.set(slotTime, slot);
-                    }
+                    const visibleDays = getSlotVisibleDays(slot);
+                    if (!visibleDays.length) return true;
+                    return visibleDays.includes(currentDayName);
                 });
-                timesToRender = Array.from(uniqueTimes.entries()).map(([slotTime, slot]) => ({ slotTime, slot }));
+
+                const generalSlots = slotsWithTime.filter(slot => {
+                    const slotDate = String(slot.slot_date || '').trim();
+                    return !slotDate && !getSlotVisibleDays(slot).length;
+                });
+
+                timesToRender = [...matchingSlots, ...generalSlots].map(slot => ({
+                    slotTime: String(slot.slot_time || '').trim(),
+                    slot
+                }));
             }
 
             if (timesToRender.length === 0) {
-                timesToRender = operatingHours.map(slotTime => ({ slotTime, slot: null }));
+                timesToRender = [];
             }
 
             timesToRender.forEach(({ slotTime, slot }) => {
@@ -1171,16 +1421,16 @@
                     ? bookedSlots.some(function(b){ return normalize(b.time_rented_washer) === normalize(uniqueText); })
                     : bookedSlots.some(function(b){ return normalize(b.time_rented_dryer) === normalize(uniqueText); });
 
-                const weekendType = getSlotWeekendType(slot);
-                const isWeekendRestricted = Boolean(weekendType);
+                const visibleDays = getSlotVisibleDays(slot);
+                const isDayRestricted = Boolean(visibleDays.length);
                 const isAvailableForDay = isSlotAvailableForDay(slot, currentDayNormalized);
-                const displayLabel = weekendType === 'saturday' ? `${slotTime} (Sat only)` : weekendType === 'sunday' ? `${slotTime} (Sun only)` : slotTime;
+                const displayLabel = visibleDays.length ? `${slotTime} (${getSlotDayLabel(slot)})` : slotTime;
 
                 if (isAlreadyBooked) {
                     slotsCell.innerHTML += `<button type="button" class="time-slot-btn" style="background: #e74c3c; color: white; border-color: #e74c3c; cursor: not-allowed;" disabled>BOOKED 🔒</button><div style="margin-bottom:6px;"></div>`;
                 } else if (dateDisabledByCalendar) {
                     slotsCell.innerHTML += `<button type="button" class="time-slot-btn" style="border-color: #bdc3c7; color: #bdc3c7; cursor: not-allowed;" disabled>${slotTime}</button><div style="margin-bottom:6px;"></div>`;
-                } else if (isWeekendRestricted && !isAvailableForDay) {
+                } else if (isDayRestricted && !isAvailableForDay) {
                     slotsCell.innerHTML += `<button type="button" class="time-slot-btn" style="border-color: #bdc3c7; color: #bdc3c7; cursor: not-allowed;" disabled>${displayLabel}</button><div style="margin-bottom:6px;"></div>`;
                 } else {
                     slotsCell.innerHTML += `<button type="button" class="time-slot-btn ${classPrefix}" onclick="selectSlot(this, '${classPrefix}', '${uniqueText}')">${displayLabel}</button><div style="margin-bottom:6px;"></div>`;
@@ -1595,17 +1845,19 @@
     }
 
     function normalizeSlotDateValue(value) {
-        if (!value) return '';
-        if (value instanceof Date) {
-            return value.toISOString().split('T')[0];
-        }
-        const text = String(value).trim();
-        if (!text) return '';
-        return text.includes('T') ? text.split('T')[0] : text;
+        const parsed = parseSlotDateValue(value);
+        if (!parsed) return '';
+        const year = parsed.getFullYear();
+        const month = String(parsed.getMonth() + 1).padStart(2, '0');
+        const day = String(parsed.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
     }
 
     function isUpcomingSlot(slot) {
-        if (!slot || !slot.slot_date) return false;
+        if (!slot) return false;
+        const visibleDays = getSlotVisibleDays(slot);
+        if (visibleDays.length) return true;
+        if (!slot.slot_date) return false;
         const slotDate = new Date(normalizeSlotDateValue(slot.slot_date) + 'T00:00:00');
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -1620,19 +1872,16 @@
         return weekendType === 'sunday' ? day === 0 : day === 6;
     }
 
-    function getWeekendSelection() {
-        const saturdayBtn = document.getElementById('saturdayBtn');
-        const sundayBtn = document.getElementById('sundayBtn');
-        if (saturdayBtn.classList.contains('active')) return 'saturday';
-        if (sundayBtn.classList.contains('active')) return 'sunday';
-        return '';
+    function getSelectedVisibleDays() {
+        const dayButtons = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+        return dayButtons.filter(day => document.getElementById(day + 'Btn').classList.contains('active'));
     }
 
-    function getUpcomingWeekendDate(weekendType) {
+    function getUpcomingWeekdayDate(dayName) {
         const today = new Date();
-        const start = new Date(today);
-        start.setHours(0, 0, 0, 0);
-        const targetDay = weekendType === 'sunday' ? 0 : 6;
+        const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        const dayIndexMap = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
+        const targetDay = dayIndexMap[dayName] ?? 1;
         const currentDay = start.getDay();
         let daysUntil = (targetDay - currentDay + 7) % 7;
         if (daysUntil === 0) {
@@ -1640,19 +1889,20 @@
         }
         const result = new Date(start);
         result.setDate(start.getDate() + daysUntil);
-        return result.toISOString().split('T')[0];
+        const year = result.getFullYear();
+        const month = String(result.getMonth() + 1).padStart(2, '0');
+        const day = String(result.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
     }
 
-    function setWeekendSelection(value) {
-        const saturdayBtn = document.getElementById('saturdayBtn');
-        const sundayBtn = document.getElementById('sundayBtn');
+    function setVisibleDaysSelection(valueList) {
+        const dayButtons = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+        dayButtons.forEach(day => document.getElementById(day + 'Btn').classList.toggle('active', valueList.includes(day)));
+
         const slotDateInput = document.getElementById('slotDate');
         const slotSelect = document.getElementById('slotSelect');
-        saturdayBtn.classList.toggle('active', value === 'saturday');
-        sundayBtn.classList.toggle('active', value === 'sunday');
-
-        if (value) {
-            slotDateInput.value = getUpcomingWeekendDate(value);
+        if (valueList.length > 0) {
+            slotDateInput.value = '';
             slotDateInput.disabled = true;
             slotSelect.disabled = true;
         } else {
@@ -1666,9 +1916,11 @@
 
     function isVisibleSlot(slot) {
         if (!isUpcomingSlot(slot)) return false;
-        const weekendSelection = getWeekendSelection();
-        if (!weekendSelection) return true;
-        return isWeekendDate(slot.slot_date, weekendSelection);
+        const selectedDays = getSelectedVisibleDays();
+        if (!selectedDays.length) return true;
+        const visibleDays = getSlotVisibleDays(slot);
+        if (!visibleDays.length) return true;
+        return selectedDays.some(day => visibleDays.includes(day));
     }
 
     function renderAdminSlots() {
@@ -1682,9 +1934,11 @@
 
         visibleSlots.forEach(slot => {
             const row = tbody.insertRow();
+            const dayLabel = getSlotDayLabel(slot);
+            const dateCellValue = slot.slot_date ? slot.slot_date : (dayLabel ? 'Recurring' : '—');
             row.innerHTML = `
-                <td>${slot.slot_date || '—'}</td>
-                <td>${slot.slot_time || '—'}</td>
+                <td>${dateCellValue}</td>
+                <td>${slot.slot_time || '—'}${dayLabel ? `<div style="font-size:12px;color:#64748b;">${dayLabel}</div>` : ''}</td>
             `;
         });
     }
@@ -1696,7 +1950,9 @@
         (adminTimeSlotsData || []).filter(isVisibleSlot).forEach(slot => {
             const option = document.createElement('option');
             option.value = slot.id;
-            option.textContent = `${slot.slot_date || '—'} • ${slot.slot_time || '—'}`;
+            const dayLabel = getSlotDayLabel(slot);
+            const displayDate = slot.slot_date || (dayLabel ? 'Recurring' : '—');
+            option.textContent = `${displayDate} • ${slot.slot_time || '—'}`;
             slotSelect.appendChild(option);
         });
     }
@@ -1719,7 +1975,7 @@
         document.getElementById('slotDate').value = '';
         document.getElementById('slotTime').value = '';
         document.getElementById('slotSelect').value = '';
-        setWeekendSelection('');
+        setVisibleDaysSelection([]);
         document.getElementById('saveSlotBtn').classList.remove('hidden');
         document.getElementById('updateSlotBtn').classList.add('hidden');
         document.getElementById('deleteSlotBtn').classList.add('hidden');
@@ -1731,14 +1987,14 @@
         document.getElementById('slotDate').value = '';
         document.getElementById('slotTime').value = '';
         document.getElementById('slotSelect').value = '';
-        setWeekendSelection('');
+        setVisibleDaysSelection([]);
         document.getElementById('saveSlotBtn').classList.remove('hidden');
         document.getElementById('updateSlotBtn').classList.add('hidden');
         document.getElementById('deleteSlotBtn').classList.add('hidden');
         editingSlotId = null;
     }
 
-    function startEditSlot(id, slotDate, slotTime, slotWeekendType) {
+    function startEditSlot(id, slotDate, slotTime, slotVisibleDaysValue, slotWeekendType) {
         editingSlotId = id;
         document.getElementById('slotSelect').value = id;
         document.getElementById('slotTime').value = slotTime || '';
@@ -1747,12 +2003,12 @@
         document.getElementById('updateSlotBtn').classList.remove('hidden');
         document.getElementById('deleteSlotBtn').classList.remove('hidden');
 
-        const weekendType = String(slotWeekendType || '').trim().toLowerCase();
-        if (weekendType) {
-            setWeekendSelection(weekendType);
-            document.getElementById('slotDate').value = slotDate || getUpcomingWeekendDate(weekendType);
+        const visibleDays = getSlotVisibleDays({ slot_visible_days: slotVisibleDaysValue || slotWeekendType || '' });
+        if (visibleDays.length) {
+            setVisibleDaysSelection(visibleDays);
+            document.getElementById('slotDate').value = '';
         } else {
-            setWeekendSelection('');
+            setVisibleDaysSelection([]);
             document.getElementById('slotDate').value = slotDate || '';
         }
     }
@@ -1761,14 +2017,14 @@
         if (isSavingSlot) return;
         const slotDateInput = document.getElementById('slotDate');
         const slotTime = document.getElementById('slotTime').value;
-        const weekendSelection = getWeekendSelection();
-        const slotDate = slotDateInput.value || (weekendSelection ? getUpcomingWeekendDate(weekendSelection) : '');
+        const visibleDays = getSelectedVisibleDays();
+        const slotDate = slotDateInput.value || '';
         if (!slotTime) {
             showWarningModal('Please fill in the slot time.');
             return;
         }
-        if (!weekendSelection && !slotDate) {
-            showWarningModal('Please choose a date.');
+        if (!visibleDays.length && !slotDate) {
+            showWarningModal('Please choose a date or at least one day.');
             return;
         }
 
@@ -1776,11 +2032,13 @@
         setSlotActionBusy(true);
         slotDateInput.value = slotDate;
 
+        const newSlotId = String(Date.now());
         const newSlot = {
-            id: String(Date.now()),
+            id: newSlotId,
             slot_date: slotDate,
             slot_time: slotTime,
-            slot_weekend_type: weekendSelection || '',
+            slot_visible_days: visibleDays.join(','),
+            slot_weekend_type: '',
             status: 'active'
         };
         adminTimeSlotsData = [...adminTimeSlotsData, newSlot];
@@ -1796,13 +2054,15 @@
             body: JSON.stringify({
                 action: 'manageTimeSlots',
                 mode: 'add',
+                slotId: newSlotId,
                 slotDate: slotDate,
                 slotTime: slotTime,
-                slotWeekendType: weekendSelection || ''
+                slotVisibleDays: visibleDays.join(',')
             })
         }).then(() => {
             closeSlotModal();
             loadAdminSlots();
+            loadScheduleDataFromServer(true);
             showWarningModal('Future slot added successfully.', 'Success');
         }).catch(() => {
             closeSlotModal();
@@ -1817,14 +2077,14 @@
         if (!editingSlotId || isSavingSlot) return;
         const slotDateInput = document.getElementById('slotDate');
         const slotTime = document.getElementById('slotTime').value;
-        const weekendSelection = getWeekendSelection();
-        const slotDate = slotDateInput.value || (weekendSelection ? getUpcomingWeekendDate(weekendSelection) : '');
+        const visibleDays = getSelectedVisibleDays();
+        const slotDate = slotDateInput.value || '';
         if (!slotTime) {
             showWarningModal('Please fill in the slot time.');
             return;
         }
-        if (!weekendSelection && !slotDate) {
-            showWarningModal('Please choose a date.');
+        if (!visibleDays.length && !slotDate) {
+            showWarningModal('Please choose a date or at least one day.');
             return;
         }
 
@@ -1834,7 +2094,7 @@
 
         adminTimeSlotsData = adminTimeSlotsData.map(slot => {
             if (String(slot.id) === String(editingSlotId)) {
-                return { ...slot, slot_date: slotDate, slot_time: slotTime, slot_weekend_type: weekendSelection || '' };
+                return { ...slot, slot_date: slotDate, slot_time: slotTime, slot_visible_days: visibleDays.join(','), slot_weekend_type: '' };
             }
             return slot;
         });
@@ -1853,11 +2113,12 @@
                 slotId: editingSlotId,
                 slotDate: slotDate,
                 slotTime: slotTime,
-                slotWeekendType: weekendSelection || ''
+                slotVisibleDays: visibleDays.join(',')
             })
         }).then(() => {
             closeSlotModal();
             loadAdminSlots();
+            loadScheduleDataFromServer(true);
             showWarningModal('Future slot updated successfully.', 'Success');
         }).catch(() => {
             closeSlotModal();
@@ -1888,6 +2149,7 @@
         }).then(() => {
             closeSlotModal();
             loadAdminSlots();
+            loadScheduleDataFromServer(true);
             showWarningModal('Future slot deleted successfully.', 'Success');
         }).catch(() => {
             closeSlotModal();
@@ -2002,15 +2264,16 @@
             deleteSlot(editingSlotId);
         }
     });
-    document.getElementById('saturdayBtn').addEventListener('click', function() {
-        setWeekendSelection('saturday');
-        renderAdminSlots();
-        populateSlotSelect();
-    });
-    document.getElementById('sundayBtn').addEventListener('click', function() {
-        setWeekendSelection('sunday');
-        renderAdminSlots();
-        populateSlotSelect();
+    ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].forEach(day => {
+        document.getElementById(day + 'Btn').addEventListener('click', function() {
+            const selectedDays = getSelectedVisibleDays();
+            const nextDays = selectedDays.includes(day)
+                ? selectedDays.filter(item => item !== day)
+                : [...selectedDays, day];
+            setVisibleDaysSelection(nextDays);
+            renderAdminSlots();
+            populateSlotSelect();
+        });
     });
     document.getElementById('cancelSlotEditBtn').addEventListener('click', closeSlotModal);
     document.getElementById('slotSelect').addEventListener('change', function() {
@@ -2027,7 +2290,7 @@
 
         const selectedSlot = (adminTimeSlotsData || []).find(slot => String(slot.id) === String(selectedId));
         if (selectedSlot) {
-            startEditSlot(selectedSlot.id, selectedSlot.slot_date, selectedSlot.slot_time, selectedSlot.slot_weekend_type);
+            startEditSlot(selectedSlot.id, selectedSlot.slot_date, selectedSlot.slot_time, selectedSlot.slot_visible_days, selectedSlot.slot_weekend_type);
         }
     });
     window.startEditSlot = startEditSlot;
@@ -2046,3 +2309,4 @@
 
 </body>
 </html>
+
