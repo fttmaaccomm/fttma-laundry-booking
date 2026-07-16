@@ -551,6 +551,46 @@
             display: flex;
         }
 
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 2147483646;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(15, 23, 42, 0.45);
+            backdrop-filter: blur(4px);
+            padding: 20px;
+        }
+
+        .loading-overlay.show {
+            display: flex;
+        }
+
+        .loading-card {
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.45);
+            border-radius: 18px;
+            box-shadow: 0 20px 45px rgba(0, 0, 0, 0.2);
+            padding: 24px 28px;
+            text-align: center;
+            min-width: min(92vw, 320px);
+        }
+
+        .loading-spinner {
+            width: 46px;
+            height: 46px;
+            margin: 0 auto 12px;
+            border-radius: 50%;
+            border: 4px solid rgba(47, 128, 237, 0.18);
+            border-top-color: var(--primary);
+            animation: spin 0.9s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
         .warning-card {
             width: min(100%, 420px);
             background: rgba(255, 255, 255, 0.94);
@@ -1022,6 +1062,14 @@
     </div>
 </div>
 
+<div id="loadingOverlay" class="loading-overlay" aria-live="polite" aria-label="Processing">
+    <div class="loading-card">
+        <div class="loading-spinner"></div>
+        <h3 id="loadingTitle" class="warning-title" style="margin-bottom: 8px;">Processing...</h3>
+        <p id="loadingMessage" class="warning-message" style="margin-bottom: 0;">Please wait while the request is being completed.</p>
+    </div>
+</div>
+
 <div id="warningModal" class="warning-modal" role="dialog" aria-modal="true" aria-labelledby="warningTitle">
     <div class="warning-card">
         <div class="warning-icon">!</div>
@@ -1222,13 +1270,35 @@
 
         return fetch(GOOGLE_SCRIPT_URL, {
             method: 'POST',
-            mode: 'no-cors',
+            mode: 'cors',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
             body: searchParams.toString()
-        }).then(function() {
-            return { success: true };
-        }).catch(function() {
-            return { success: false };
+        }).then(async function(response) {
+            const contentType = response.headers.get('content-type') || '';
+            let parsedBody = null;
+
+            if (contentType.includes('application/json')) {
+                parsedBody = await response.json();
+            } else {
+                const textBody = await response.text();
+                try {
+                    parsedBody = JSON.parse(textBody);
+                } catch (err) {
+                    parsedBody = textBody;
+                }
+            }
+
+            if (!response.ok) {
+                return { success: false, error: 'The request could not be completed.' };
+            }
+
+            if (parsedBody && typeof parsedBody === 'object' && 'success' in parsedBody) {
+                return parsedBody;
+            }
+
+            return { success: true, payload: parsedBody };
+        }).catch(function(err) {
+            return { success: false, error: err && err.message ? err.message : 'Request failed' };
         });
     }
 
@@ -1345,6 +1415,21 @@
     
     let bookedSlots = [];
     let existingBookingReferences = [];
+
+    let pendingOperationCount = 0;
+
+    function showLoading(message = 'Please wait while the request is being completed.') {
+        document.getElementById('loadingMessage').textContent = message;
+        document.getElementById('loadingOverlay').classList.add('show');
+        pendingOperationCount += 1;
+    }
+
+    function hideLoading() {
+        pendingOperationCount = Math.max(0, pendingOperationCount - 1);
+        if (pendingOperationCount === 0) {
+            document.getElementById('loadingOverlay').classList.remove('show');
+        }
+    }
 
     function showWarningModal(message, title = 'Warning') {
         document.getElementById('warningTitle').textContent = title;
@@ -1777,6 +1862,7 @@
     });
 
     document.getElementById('savePricingBtn').addEventListener('click', function() {
+        showLoading('Saving pricing...');
         const nextPrices = {
             washer: Number(document.getElementById('washerPriceInput').value || DEFAULT_WASHER_PRICE),
             dryer: Number(document.getElementById('dryerPriceInput').value || DEFAULT_DRYER_PRICE)
@@ -1790,9 +1876,13 @@
                 showWarningModal('Pricing updated successfully.', 'Success');
                 return loadPricesFromServer();
             }
+            hideLoading();
             showWarningModal('Could not save pricing. Please try again.');
         }).catch(function() {
+            hideLoading();
             showWarningModal('Could not save pricing. Please try again.');
+        }).finally(function() {
+            hideLoading();
         });
     });
 
@@ -1876,9 +1966,11 @@
         const btn = document.getElementById('submitBtn');
         btn.disabled = true;
         btn.innerText = "Checking reference...";
+        showLoading('Checking your booking request...');
 
         checkReferenceDuplicate(referenceValue, function(isDuplicate) {
             if (isDuplicate === null) {
+                hideLoading();
                 showWarningModal('Could not verify the reference right now. Please try again.');
                 btn.disabled = false;
                 btn.innerText = "Confirm Booking";
@@ -1886,6 +1978,7 @@
             }
 
             if (isDuplicate) {
+                hideLoading();
                 showWarningModal('This receipt/reference number has already been used. Please enter a different one.');
                 btn.disabled = false;
                 btn.innerText = "Confirm Booking";
@@ -1893,6 +1986,7 @@
             }
 
             btn.innerText = "Transmitting to Sheets Tracker... ⏳";
+            showLoading('Processing your booking...');
 
             // Store the form data in a global variable for the receipt
             // Reverted: This object now matches the order and fields expected by the old doPost function.
@@ -1929,10 +2023,13 @@
                     throw new Error(result && result.error ? result.error : 'Booking save failed');
                 }
             }).catch(err => {
+                hideLoading();
                 showWarningModal(err && err.message ? err.message : "Something went wrong. Please check your connection and try again.");
                 btn.disabled = false;
                 btn.innerText = "Confirm Booking";
                 console.error(err);
+            }).finally(function() {
+                hideLoading();
             });
         });
     });
@@ -2565,9 +2662,16 @@
     });
 
     document.getElementById('openSlotModalBtn').addEventListener('click', openSlotModal);
-    document.getElementById('saveSlotBtn').addEventListener('click', saveTimeSlot);
-    document.getElementById('updateSlotBtn').addEventListener('click', updateTimeSlot);
+    document.getElementById('saveSlotBtn').addEventListener('click', function() {
+        showLoading('Saving time slot...');
+        saveTimeSlot();
+    });
+    document.getElementById('updateSlotBtn').addEventListener('click', function() {
+        showLoading('Updating time slot...');
+        updateTimeSlot();
+    });
     document.getElementById('deleteSlotBtn').addEventListener('click', function() {
+        showLoading('Deleting time slot...');
         if (editingSlotId) {
             deleteSlot(editingSlotId);
         }
