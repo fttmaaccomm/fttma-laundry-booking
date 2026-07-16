@@ -1208,6 +1208,8 @@
     let adminPassword = null;
     let washerPrice = DEFAULT_WASHER_PRICE;
     let dryerPrice = DEFAULT_DRYER_PRICE;
+    let autoRefreshTimer = null;
+    let autoRefreshInProgress = false;
 
     function postToScript(payload) {
         const searchParams = new URLSearchParams();
@@ -1249,7 +1251,7 @@
         });
     }
 
-    function loadPricesFromServer(callback) {
+    function loadPricesFromServer(callback, silent = false) {
         return new Promise(function(resolve) {
             const callbackName = 'onPricesLoaded' + Date.now();
             window[callbackName] = function(data) {
@@ -1275,6 +1277,9 @@
                 applyPricingToUI();
                 if (callback) callback(fallbackPrices);
                 resolve(fallbackPrices);
+                if (!silent) {
+                    showWarningModal('Could not load pricing. Please refresh the page if needed.');
+                }
             };
             script.onload = function() {
                 document.body.removeChild(script);
@@ -1373,7 +1378,7 @@
     }
     let inactivityTimer;
 
-    function loadScheduleDataFromServer(refreshMainSchedule = true) {
+    function loadScheduleDataFromServer(refreshMainSchedule = true, silent = false) {
         return new Promise(function(resolve) {
             window.onDataLoaded = function(data) {
                 const normalizedData = Array.isArray(data) ? data : (data && data.bookings ? data.bookings : []);
@@ -1392,13 +1397,49 @@
             script.src = GOOGLE_SCRIPT_URL + "?action=getScheduleData&callback=onDataLoaded&t=" + Date.now();
             script.onerror = () => {
                 console.error("Failed to load schedule data from Google Sheets.");
-                showWarningModal("Could not load schedule data. Please check your connection and refresh the page.");
+                if (!silent) {
+                    showWarningModal("Could not load schedule data. Please check your connection and refresh the page.");
+                }
                 resolve(false);
             };
             script.onload = () => {
                 document.body.removeChild(script);
             };
             document.body.appendChild(script);
+        });
+    }
+
+    function startSeamlessAutoRefresh() {
+        if (autoRefreshTimer) {
+            clearInterval(autoRefreshTimer);
+        }
+        autoRefreshTimer = setInterval(function() {
+            if (document.hidden) return;
+            refreshLivePageData();
+        }, 4000);
+    }
+
+    function refreshLivePageData() {
+        if (autoRefreshInProgress) {
+            return Promise.resolve(false);
+        }
+        autoRefreshInProgress = true;
+
+        const adminPanel = document.getElementById('adminPanel');
+        const showAdminRefresh = !!(adminPanel && !adminPanel.classList.contains('hidden'));
+
+        const requests = [
+            loadPricesFromServer(null, true).catch(function() { return null; }),
+            loadScheduleDataFromServer(true, true).catch(function() { return null; })
+        ];
+
+        if (showAdminRefresh) {
+            requests.push(loadAdminData(true).catch(function() { return null; }));
+            requests.push(loadAdminSlots(true).catch(function() { return null; }));
+        }
+
+        return Promise.all(requests).finally(function() {
+            autoRefreshInProgress = false;
         });
     }
 
@@ -1409,6 +1450,7 @@
         applyPricingToUI();
         loadPricesFromServer();
         loadScheduleDataFromServer(true);
+        startSeamlessAutoRefresh();
 
         // Start the inactivity timer when the page loads
         resetInactivityTimer();
@@ -1962,6 +2004,7 @@
                 document.getElementById('adminPanel').classList.remove('hidden');
                 refreshAdminData().then(function() {
                     startAutoRefresh();
+                    startSeamlessAutoRefresh();
                 });
             } else {
                 showWarningModal('Invalid credentials. Please try again.');
@@ -2033,7 +2076,7 @@
         });
     });
 
-    function loadAdminData() {
+    function loadAdminData(silent = false) {
         const tbody = document.getElementById('adminBookingsTable').querySelector('tbody');
         if (!tbody.dataset.initialized) {
             tbody.innerHTML = '<tr><td colspan="7">Loading bookings...</td></tr>';
@@ -2055,7 +2098,9 @@
             const script = document.createElement('script');
             script.src = GOOGLE_SCRIPT_URL + "?action=getAdminData&callback=onAdminBookingsLoaded&t=" + Date.now();
             script.onerror = () => {
-                tbody.innerHTML = '<tr><td colspan="7">Failed to load data.</td></tr>';
+                if (!silent) {
+                    tbody.innerHTML = '<tr><td colspan="7">Failed to load data.</td></tr>';
+                }
                 resolve([]);
             };
             script.onload = () => { document.body.removeChild(script); };
@@ -2063,7 +2108,7 @@
         });
     }
 
-    function loadAdminSlots() {
+    function loadAdminSlots(silent = false) {
         const tbody = document.getElementById('adminSlotsTable').querySelector('tbody');
         if (!tbody.dataset.initialized) {
             tbody.innerHTML = '<tr><td colspan="3">Loading slots...</td></tr>';
@@ -2082,7 +2127,9 @@
             const script = document.createElement('script');
             script.src = GOOGLE_SCRIPT_URL + "?action=getTimeSlots&callback=onAdminSlotsLoaded&t=" + Date.now();
             script.onerror = () => {
-                tbody.innerHTML = '<tr><td colspan="3">Failed to load slots.</td></tr>';
+                if (!silent) {
+                    tbody.innerHTML = '<tr><td colspan="3">Failed to load slots.</td></tr>';
+                }
                 resolve([]);
             };
             script.onload = () => { document.body.removeChild(script); };
