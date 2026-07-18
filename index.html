@@ -2499,7 +2499,6 @@
         loadPricesFromServer();
         loadScheduleDataFromServer(true);
         startSeamlessAutoRefresh();
-        startAdminBackgroundSync();
 
         document.querySelectorAll('input[name="gender"]').forEach(function(radio) {
             radio.addEventListener('change', function() {
