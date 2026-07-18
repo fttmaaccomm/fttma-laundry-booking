@@ -153,6 +153,7 @@
         .group-title { margin-top: 0; color: var(--pastel-text-strong); }
         input, select {
             width: 100%;
+            max-width: 520px;
             padding: 12px 14px;
             border: 1px solid rgba(148, 163, 184, 0.35);
             border-radius: 10px;
@@ -160,6 +161,9 @@
             font-size: 15px;
             background: rgba(255, 255, 255, 0.8);
             transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
         }
         input:focus {
             border-color: var(--primary);
@@ -276,27 +280,52 @@
             color: #2563eb;
         }
         .time-slot-btn {
-            display: block;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
             width: 100%;
-            padding: 8px 6px;
+            padding: 9px 8px;
             border: 1px solid var(--primary);
-            background: rgba(255, 255, 255, 0.85);
+            background: rgba(255, 255, 255, 0.9);
             color: var(--primary);
-            border-radius: 8px;
+            border-radius: 10px;
             cursor: pointer;
             font-weight: 700;
             font-size: 12px;
             transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
         }
         .time-slot-btn:hover {
             background: linear-gradient(135deg, var(--primary), var(--success));
             color: white;
-            transform: translateY(-1px);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(47, 128, 237, 0.16);
         }
         .time-slot-btn.selected {
-            background: linear-gradient(135deg, var(--success), var(--success-dark)) !important;
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%) !important;
             color: white !important;
-            border-color: var(--success) !important;
+            border-color: #16a34a !important;
+            box-shadow: 0 14px 28px rgba(22, 163, 74, 0.28), 0 0 0 3px rgba(34, 197, 94, 0.18);
+            transform: translateY(-2px) scale(1.01);
+            animation: slotSelectedPulse 1.6s ease-in-out infinite;
+        }
+        .time-slot-btn.selected::before {
+            content: '✓';
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 18px;
+            height: 18px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.28);
+            font-size: 11px;
+            font-weight: 800;
+            flex-shrink: 0;
+        }
+        @keyframes slotSelectedPulse {
+            0%, 100% { box-shadow: 0 14px 28px rgba(22, 163, 74, 0.28), 0 0 0 3px rgba(34, 197, 94, 0.18); }
+            50% { box-shadow: 0 16px 32px rgba(22, 163, 74, 0.34), 0 0 0 4px rgba(34, 197, 94, 0.24); }
         }
 
         .summary-box {
@@ -316,6 +345,74 @@
             gap: 12px;
         }
         .summary-item strong { color: #475569; }
+        .booking-done-row {
+            background: linear-gradient(90deg, rgba(34, 197, 94, 0.16), rgba(240, 253, 244, 0.95)) !important;
+            box-shadow: inset 3px 0 0 #22c55e;
+        }
+        .booking-status-cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-width: 0;
+            flex-shrink: 1;
+        }
+        .booking-status-toggle {
+            position: relative;
+            display: inline-flex;
+            width: 46px;
+            height: 26px;
+            min-width: 46px;
+            flex-shrink: 0;
+        }
+        .booking-status-toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .booking-status-slider {
+            position: absolute;
+            inset: 0;
+            cursor: pointer;
+            background: #cbd5e1;
+            border-radius: 999px;
+            transition: background-color 0.2s ease;
+        }
+        .booking-status-slider::before {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            left: 3px;
+            top: 3px;
+            background: white;
+            border-radius: 50%;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.24);
+            transition: transform 0.2s ease;
+        }
+        .booking-status-toggle input:checked + .booking-status-slider {
+            background: #22c55e;
+        }
+        .booking-status-toggle input:checked + .booking-status-slider::before {
+            transform: translateX(20px);
+        }
+        .booking-status-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4px 8px;
+            border-radius: 999px;
+            background: #f1f5f9;
+            color: #475569;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .booking-done-row .booking-status-pill {
+            background: #dcfce7;
+            color: #15803d;
+        }
         .qr-container {
             text-align: center;
             margin: 15px 0;
@@ -485,12 +582,26 @@
             table {
                 table-layout: fixed;
             }
+            th:nth-child(1), td:nth-child(1) {
+                width: 62px;
+                min-width: 62px;
+                max-width: 72px;
+            }
             th, td {
                 text-align: center;
                 vertical-align: middle;
                 white-space: normal;
                 overflow-wrap: anywhere;
                 word-break: break-word;
+            }
+            .booking-status-cell {
+                min-width: 0;
+                flex: 0 1 auto;
+                justify-content: center;
+            }
+            .booking-status-toggle {
+                width: 46px;
+                min-width: 46px;
             }
             .time-slot-btn {
                 margin: 0 auto;
@@ -554,6 +665,43 @@
             display: flex;
         }
 
+        .status-toast {
+            position: fixed;
+            right: 18px;
+            bottom: 18px;
+            z-index: 2147483647;
+            min-width: min(92vw, 320px);
+            max-width: 360px;
+            padding: 12px 14px;
+            border-radius: 14px;
+            background: rgba(15, 23, 42, 0.95);
+            color: white;
+            box-shadow: 0 16px 36px rgba(15, 23, 42, 0.24);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            transform: translateY(12px);
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.25s ease;
+        }
+
+        .status-toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .status-toast strong {
+            font-size: 0.95rem;
+        }
+
+        .status-toast span {
+            font-size: 0.88rem;
+            color: rgba(255, 255, 255, 0.84);
+            line-height: 1.45;
+        }
+
         .loading-overlay {
             position: fixed;
             inset: 0;
@@ -589,6 +737,17 @@
             border-top-color: var(--primary);
             animation: spin 0.9s linear infinite;
         }
+        .inline-spinner {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.28);
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
 
         @keyframes spin {
             to { transform: rotate(360deg); }
@@ -602,19 +761,35 @@
             box-shadow: 0 20px 45px rgba(0, 0, 0, 0.2);
             padding: 22px;
             text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
         .warning-icon {
-            width: 48px;
-            height: 48px;
-            margin: 0 auto 12px;
+            width: 54px;
+            height: 54px;
+            margin: 0 auto 14px;
             border-radius: 50%;
-            display: grid;
-            place-items: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: 800;
+            line-height: 1;
+            box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.06);
+        }
+        .warning-icon.warning {
             background: linear-gradient(135deg, #fee2e2, #fecaca);
             color: #dc2626;
-            font-size: 24px;
-            font-weight: 700;
+        }
+        .warning-icon.success {
+            background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+            color: #15803d;
+        }
+        .warning-icon.info {
+            background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+            color: #2563eb;
         }
 
         .warning-title {
@@ -622,6 +797,7 @@
             color: #1f2937;
             font-size: 1.15rem;
             font-weight: 700;
+            text-align: center;
         }
 
         .warning-message {
@@ -629,16 +805,154 @@
             color: #475569;
             font-size: 0.95rem;
             line-height: 1.5;
+            text-align: center;
         }
+
+        .column-picker-card {
+            width: min(100%, 560px);
+            max-height: min(92vh, 760px);
+            overflow: hidden;
+            padding: 20px;
+            align-items: stretch;
+        }
+
+        .column-picker-body {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            min-height: 0;
+        }
+
+        .column-picker-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: min(54vh, 420px);
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .column-picker-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 12px 14px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, rgba(248, 250, 252, 0.95), rgba(241, 245, 249, 0.95));
+            border: 1px solid rgba(226, 232, 240, 0.95);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+            transition: all 0.2s ease;
+        }
+
+        .column-picker-item.inactive {
+            opacity: 0.72;
+            background: rgba(248, 250, 252, 0.72);
+        }
+
+        .column-picker-item.drag-over {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(47, 128, 237, 0.16);
+        }
+
+        .column-picker-item.dragging {
+            opacity: 0.7;
+        }
+
+        .column-picker-handle {
+            color: #64748b;
+            font-size: 1rem;
+            cursor: grab;
+            user-select: none;
+            padding: 2px 4px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.7);
+        }
+
+        .column-picker-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+            flex: 1;
+        }
+
+        .column-picker-label span:last-child {
+            font-weight: 700;
+            color: #0f172a;
+            font-size: 0.95rem;
+        }
+
+        .column-picker-switch {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 24px;
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+
+        .column-picker-switch input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .column-picker-switch span {
+            position: absolute;
+            inset: 0;
+            background: #cbd5e1;
+            border-radius: 999px;
+            transition: background-color 0.2s ease;
+        }
+
+        .column-picker-switch span::before {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: white;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.2);
+            transition: transform 0.2s ease;
+        }
+
+        .column-picker-switch input:checked + span {
+            background: linear-gradient(135deg, var(--primary), #4f8ef7);
+        }
+
+        .column-picker-switch input:checked + span::before {
+            transform: translateX(20px);
+        }
+
+        .column-picker-actions {
+            display: flex;
+            justify-content: flex-start;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(226, 232, 240, 0.8);
+        }
+
         .admin-table-container {
             max-height: 70vh;
             overflow-y: auto;
+            overflow-x: auto;
             background: rgba(255, 255, 255, 0.55);
             border-radius: 12px;
             padding: 4px;
             border: 1px solid rgba(226, 232, 240, 0.7);
             scrollbar-width: thin;
             scrollbar-color: rgba(31, 33, 36, 0.634) transparent;
+        }
+        .admin-table-container table {
+            width: 100%;
+            min-width: 700px;
         }
 
         .input-column::-webkit-scrollbar,
@@ -721,6 +1035,16 @@
             justify-content: center;
             align-items: center;
         }
+        .icon-btn {
+            width: 46px;
+            height: 46px;
+            min-width: 46px;
+            padding: 0;
+            border-radius: 100%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
         .admin-header-actions .admin-settings-toggle {
             background: #ffffff00;
             color: #ffffff00;
@@ -783,8 +1107,38 @@
             align-items: center;
             padding: 16px;
             border-radius: 18px;
-            background: rgba(248, 250, 252, 0.8);
+            background: rgba(248, 250, 252, 0.92);
             border: 1px solid rgba(226, 232, 240, 0.8);
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            backdrop-filter: blur(8px);
+        }
+        .admin-filter-card {
+            flex: 1 1 auto;
+            min-width: 260px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(248,250,252,0.9));
+            border: 1px solid rgba(226,232,240,0.9);
+            display: flex;
+            align-items: center;
+        }
+        .admin-action-card {
+            flex: 0 0 auto;
+            padding: 8px 10px;
+            border-radius: 12px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(255,255,255,0.94));
+            border: 1px solid rgba(226,232,240,0.95);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .admin-action-card .admin-action-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            white-space: nowrap;
         }
         .admin-controls .btn-action {
             width: auto;
@@ -797,6 +1151,218 @@
             border-radius: 999px;
             font-size: 14px;
             box-shadow: 0 6px 16px rgba(37, 99, 235, 0.14);
+        }
+        .admin-controls .btn-action.icon-btn {
+            width: 46px;
+            min-width: 46px;
+            height: 46px;
+            padding: 0;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+        }
+        .admin-summary-card {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            padding: 16px;
+            margin-bottom: 18px;
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.92);
+            border: 1px solid rgba(226, 232, 240, 0.92);
+            box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+        }
+
+        .admin-summary-card .summary-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 16px;
+            border-radius: 14px;
+            background: rgba(248, 250, 252, 0.95);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            min-width: 0;
+        }
+
+        .admin-summary-card .summary-item.summary-total {
+            background: rgba(59, 130, 246, 0.12);
+            border-color: rgba(59, 130, 246, 0.18);
+        }
+        .admin-summary-card .summary-item.summary-completed {
+            background: rgba(34, 197, 94, 0.12);
+            border-color: rgba(34, 197, 94, 0.18);
+        }
+        .admin-summary-card .summary-item.summary-pending {
+            background: rgba(245, 158, 11, 0.12);
+            border-color: rgba(245, 158, 11, 0.18);
+        }
+        .admin-summary-card .summary-item.summary-range {
+            background: rgba(168, 85, 247, 0.12);
+            border-color: rgba(168, 85, 247, 0.18);
+        }
+
+        .admin-summary-card .summary-item strong {
+            font-size: 0.9rem;
+            color: #334155;
+            line-height: 1.2;
+        }
+
+        .admin-summary-card .summary-item span {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #0f172a;
+            white-space: nowrap;
+            margin-left: 12px;
+        }
+
+        .admin-status-card {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding: 16px 18px;
+            margin-bottom: 18px;
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(226, 232, 240, 0.9);
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+        }
+
+        .availability-modal-card {
+            width: min(92vw, 460px);
+            padding: 20px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.96);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 24px 54px rgba(15, 23, 42, 0.24);
+        }
+        .admin-status-card-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+        .admin-status-card-head h3 {
+            margin: 0;
+            border: none;
+            color: #0f172a;
+            font-size: 1rem;
+        }
+        .booking-status-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.16), rgba(47, 128, 237, 0.12));
+            color: #166534;
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .admin-status-switch-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 10px 12px;
+            border-radius: 14px;
+            background: rgba(248, 250, 252, 0.95);
+            border: 1px solid rgba(226, 232, 240, 0.9);
+        }
+        .admin-status-switch-row strong {
+            display: block;
+            color: #0f172a;
+            margin-bottom: 2px;
+        }
+        .admin-status-switch-row p {
+            margin: 0;
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+        .admin-status-switch {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 46px;
+            height: 26px;
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+        .admin-status-switch input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .admin-status-switch span {
+            position: absolute;
+            inset: 0;
+            background: #cbd5e1;
+            border-radius: 999px;
+            transition: background-color 0.2s ease;
+        }
+        .admin-status-switch span::before {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: white;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.2);
+            transition: transform 0.2s ease;
+        }
+        .admin-status-switch input:checked + span {
+            background: linear-gradient(135deg, var(--primary), #4f8ef7);
+        }
+        .admin-status-switch input:checked + span::before {
+            transform: translateX(20px);
+        }
+        .booking-status-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 2147483644;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.68), rgba(15, 23, 42, 0.5)), url('fttma.jpeg');
+            background-size: cover;
+            background-position: center;
+            backdrop-filter: blur(4px);
+            pointer-events: none;
+        }
+        .booking-status-overlay.hidden {
+            display: none;
+        }
+        .booking-status-card {
+            width: min(92vw, 480px);
+            padding: 24px;
+            border-radius: 24px;
+            background: rgba(255, 255, 255, 0.94);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 24px 50px rgba(15, 23, 42, 0.26);
+            text-align: center;
+        }
+        .booking-status-card h3 {
+            margin: 0 0 10px;
+            color: #0f172a;
+            border: none;
+            font-size: 1.25rem;
+        }
+        .booking-status-card p {
+            margin: 0 0 8px;
+            color: #475569;
+            line-height: 1.6;
+        }
+        .booking-status-note {
+            font-size: 0.92rem;
+            color: #2563eb;
+            font-weight: 700;
         }
         .admin-controls input[type="text"],
         .admin-controls input[type="date"] {
@@ -850,9 +1416,28 @@
                 justify-content: flex-start;
                 flex-wrap: nowrap;
             }
+            #adminSettingsMenu {
+                right: 0;
+                left: auto;
+            }
             .admin-header-search {
                 flex: 1 1 auto;
                 min-width: 0;
+            }
+            .column-picker-card {
+                width: min(100%, 100%);
+                max-height: 100%;
+                padding: 16px;
+                border-radius: 16px;
+            }
+            .column-picker-list {
+                max-height: min(58vh, 440px);
+            }
+            .column-picker-actions {
+                flex-direction: column;
+            }
+            .column-picker-actions .btn-action {
+                width: 100%;
             }
         }
         .admin-panel-card .btn-action.btn-secondary {
@@ -1030,7 +1615,7 @@
             <!-- Conditional Field: Cash Section -->
             <div id="cashFields" class="form-group hidden">
                 <label for="paidToCash">Enter Receipt No.</label>
-                <input type="text" id="paidToCash" placeholder="#1-2345" pattern="#[0-9]-[0-9]{4}" title="Format must be #N-NNNN (e.g., #1-2345)">
+                <input type="text" id="paidToCash" placeholder="Strictly follow the Registration department receipt format (e.g. #1-2345)" pattern="#[0-9]-[0-9]{4}" title="Format must be #N-NNNN (e.g., #1-2345)">
             </div>
 
             <!-- Conditional Field: GCash Section -->
@@ -1073,9 +1658,20 @@
     </div>
 </div>
 
+<div id="bookingStatusOverlay" class="booking-status-overlay hidden" aria-live="polite">
+    <div class="booking-status-card">
+        <div class="warning-icon info">🛑</div>
+        <h3 id="bookingStatusTitle">Bookings Paused</h3>
+        <p id="bookingStatusMessage">The booking system is currently unavailable.</p>
+        <p class="booking-status-note">Contact any accommodation coordinator.</p>
+    </div>
+</div>
+
+<div id="statusToast" class="status-toast" role="status" aria-live="polite"></div>
+
 <div id="warningModal" class="warning-modal" role="dialog" aria-modal="true" aria-labelledby="warningTitle">
     <div class="warning-card">
-        <div class="warning-icon">!</div>
+        <div id="warningIcon" class="warning-icon warning">!</div>
         <h3 id="warningTitle" class="warning-title">Warning</h3>
         <p id="warningMessage" class="warning-message">Please complete the required fields.</p>
         <button type="button" class="btn-action btn-secondary" onclick="closeWarningModal()">Okay</button>
@@ -1102,6 +1698,22 @@
             <button type="submit" class="btn-action btn-green">Update Password</button>
             <button type="button" class="btn-action btn-secondary" onclick="closePasswordModal()">Cancel</button>
         </form>
+    </div>
+</div>
+
+<div id="titleModal" class="warning-modal" role="dialog" aria-modal="true" aria-labelledby="titleModalTitle">
+    <div class="warning-card" style="max-width: 460px;">
+        <div class="warning-icon">✏️</div>
+        <h3 id="titleModalTitle" class="warning-title">Edit Main Page Title</h3>
+        <p style="margin: 0 0 12px; color: #475569;">Update the headline shown on the main landing page.</p>
+        <div class="form-group">
+            <label for="mainTitleInput">Main Page Title</label>
+            <input type="text" id="mainTitleInput" placeholder="FTTMa Laundry Booking System">
+        </div>
+        <div class="form-actions" style="justify-content: flex-start; gap: 12px; flex-wrap: wrap;">
+            <button type="button" id="saveTitleBtn" class="btn-action btn-green" style="width: auto; padding: 10px 16px; margin-top: 0;">Save Title</button>
+            <button type="button" id="closeTitleModalBtn" class="btn-action btn-secondary" style="width: auto; padding: 10px 16px; margin-top: 0;">Cancel</button>
+        </div>
     </div>
 </div>
 
@@ -1134,6 +1746,7 @@
             <label for="slotTime">Time</label>
             <input type="text" id="slotTime" placeholder="e.g. 08:00 AM - 10:00 AM" required>
         </div>
+
         <div class="form-actions" style="justify-content: flex-start; gap: 12px; flex-wrap: wrap;">
             <button type="button" id="saveSlotBtn" class="btn-action btn-blue" style="width: auto; padding: 10px 16px; margin-top: 0;">Add Slot</button>
             <button type="button" id="updateSlotBtn" class="btn-action btn-green hidden" style="width: auto; padding: 10px 16px; margin-top: 0;">Update Slot</button>
@@ -1163,6 +1776,61 @@
     </div>
 </div>
 
+<div id="columnPickerModal" class="warning-modal" role="dialog" aria-modal="true" aria-labelledby="columnPickerModalTitle">
+    <div class="warning-card column-picker-card">
+        <div class="warning-icon">🗂️</div>
+        <h3 id="columnPickerModalTitle" class="warning-title">Customize Booking Columns</h3>
+        <p class="warning-message" style="margin: 0 0 12px;">Turn columns on or off and drag them to change the order in the admin table.</p>
+        <div class="column-picker-body">
+            <div id="columnPickerOptions" class="column-picker-list"></div>
+            <div class="column-picker-actions">
+                <button type="button" id="saveColumnPrefsBtn" class="btn-action btn-blue" style="width: auto; padding: 10px 16px; margin-top: 0;">Save</button>
+                <button type="button" id="closeColumnPickerBtn" class="btn-action btn-secondary" style="width: auto; padding: 10px 16px; margin-top: 0;">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="availabilityModal" class="warning-modal" role="dialog" aria-modal="true" aria-labelledby="availabilityModalTitle">
+    <div class="warning-card availability-modal-card">
+        <div class="warning-icon">🛡️</div>
+        <h3 id="availabilityModalTitle" class="warning-title">Booking Availability</h3>
+        <p class="warning-message" style="margin: 0 0 12px;">Choose when the booking system should pause for customers while keeping the admin area available.</p>
+        <div class="admin-status-card" style="margin-bottom: 0;">
+            <div class="admin-status-card-head">
+                <div>
+                    <p class="admin-eyebrow">Booking access</p>
+                    <h3>System Availability</h3>
+                </div>
+                <span id="bookingStatusBadge" class="booking-status-badge">Open</span>
+            </div>
+            <div class="admin-status-switch-row">
+                <div>
+                    <strong>Under Maintenance</strong>
+                    <p>Show a maintenance notice and block new bookings.</p>
+                </div>
+                <label class="admin-status-switch" title="Under Maintenance">
+                    <input type="checkbox" id="maintenanceToggle">
+                    <span></span>
+                </label>
+            </div>
+            <div class="admin-status-switch-row">
+                <div>
+                    <strong>Term Break</strong>
+                    <p>Show a term-break notice and stop booking requests.</p>
+                </div>
+                <label class="admin-status-switch" title="Term Break">
+                    <input type="checkbox" id="termBreakToggle">
+                    <span></span>
+                </label>
+            </div>
+        </div>
+        <div class="column-picker-actions" style="margin-top: 16px;">
+            <button type="button" id="closeAvailabilityModalBtn" class="btn-action btn-secondary" style="width: auto; padding: 10px 16px; margin-top: 0;">Close</button>
+        </div>
+    </div>
+</div>
+
 <!-- ADMIN ACCESS ICON -->
 <div class="admin-icon admin-access-button" onclick="showAdminLogin()">
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 24px; height: 24px;">
@@ -1177,7 +1845,7 @@
         <form id="adminLoginForm">
             <div class="form-group"><label for="adminUser">Username</label><input type="text" id="adminUser" required></div>
             <div class="form-group"><label for="adminPass">Password</label><input type="password" id="adminPass" required></div>
-            <button type="submit" class="btn-action btn-blue">Login</button>
+            <button type="submit" id="adminLoginSubmitBtn" class="btn-action btn-blue">Login</button>
             <button type="button" class="btn-action btn-secondary" onclick="hideAdminLogin()">Cancel</button>
         </form>
     </div>
@@ -1194,32 +1862,84 @@
             <div class="admin-header-actions" style="width: 100%;">
                 <input type="text" id="adminSearch" class="admin-header-search" placeholder="Search bookings...">
                 <div style="position: relative;">
-                    <button type="button" id="adminSettingsToggle" class="admin-settings-toggle" style="margin-top: 0; width: 46px; height: 44px; min-height: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 14px;">
+                    <button type="button" id="adminSettingsToggle" class="admin-settings-toggle" aria-label="Open admin settings" aria-expanded="false" style="margin-top: 0; width: 46px; height: 44px; min-height: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 14px;">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px; color: #111827; transition: all 0.2s ease;">
                             <path d="m6 9 6 6 6-6"/>
                         </svg>
                     </button>
                     <div id="adminSettingsMenu" style="display: none; position: absolute; right: 0; top: calc(100% + 8px);">
-                        <button type="button" id="openPasswordModalBtn" class="btn-action" style="width: 100%; margin-top: 0; padding: 10px 12px; display: inline-flex; align-items: center; gap: 8px; justify-content: center;">Change Password</button>
-                        <button type="button" id="adminLogoutBtn" class="btn-action " style="width: 100%; margin-top: 8px; padding: 10px 12px;">Logout</button>
+                        <button type="button" id="openAvailabilityModalBtn" class="btn-action" style="width: 100%; margin-top: 0; padding: 10px 12px; display: inline-flex; align-items: center; gap: 8px; justify-content: center;">Booking Availability</button>
+                        <button type="button" id="openPasswordModalBtn" class="btn-action" style="width: 100%; margin-top: 8px; padding: 10px 12px; display: inline-flex; align-items: center; gap: 8px; justify-content: center;">Change Password</button>
+                        <button type="button" id="editTitleBtn" class="btn-action" style="width: 100%; margin-top: 8px; padding: 10px 12px; display: inline-flex; align-items: center; gap: 8px; justify-content: center;">Edit Page Title</button>
+                        <button type="button" id="adminLogoutBtn" class="btn-action" style="width: 100%; margin-top: 8px; padding: 10px 12px;">Logout</button>
                     </div>
                 </div>
             </div>
         </div>
 
         <div class="admin-controls">
-            <div style="display:flex; gap:10px; flex:1; flex-wrap:wrap; align-items:center;">
-                <input type="date" id="startDate">
-                <span style="color:#64748b; font-weight:600;">to</span>
-                <input type="date" id="endDate">
+            <div class="admin-filter-card">
+                <div class="admin-filter-group" style="display:flex; gap:10px; flex:1; flex-wrap:wrap; align-items:center;">
+                    <input type="date" id="startDate">
+                    <span style="color:#64748b; font-weight:600;">to</span>
+                    <input type="date" id="endDate">
+                    <div style="display:flex; gap:10px; margin-left:8px; align-items:center;">
+                        <button type="button" id="resetBtn" class="btn-action admin-action-btn icon-btn" title="Reset" aria-label="Reset">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;">
+                                <path d="M21 12a9 9 0 1 0-3 6.7L21 12" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
             </div>
-            <div style="display:flex; flex-wrap:wrap; gap:10px;">
-                <button type="button" id="filterBtn" class="btn-action admin-action-btn" style="width: auto; padding: 12px 18px; margin-top: 0;">Filter</button>
-                <button type="button" id="resetBtn" class="btn-action admin-action-btn" style="width: auto; padding: 12px 18px; margin-top: 0;">Reset</button>
-                <button type="button" id="downloadPdfBtn" class="btn-action admin-action-btn" style="width: auto; padding: 12px 18px; margin-top: 0;">Download PDF</button>
-                <button type="button" id="openSlotModalBtn" class="btn-action admin-action-btn" style="width: auto; padding: 12px 18px; margin-top: 0;">Timeslot</button>
-                <button type="button" id="openPricingModalBtn" class="btn-action admin-action-btn" style="width: auto; padding: 12px 18px; margin-top: 0;">Pricing</button>
+
+            <div class="admin-action-card">
+                <div class="admin-action-group" style="display:flex; flex-wrap:nowrap; gap:10px; align-items:center; justify-content:flex-end;">
+                    <button type="button" id="customizeColumnsBtn" class="btn-action admin-action-btn icon-btn" title="Customize Columns" aria-label="Customize Columns">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;">
+                            <rect x="3" y="3" width="8" height="8" />
+                            <rect x="13" y="3" width="8" height="8" />
+                            <rect x="3" y="13" width="8" height="8" />
+                            <rect x="13" y="13" width="8" height="8" />
+                        </svg>
+                    </button>
+
+                    <button type="button" id="downloadPdfBtn" class="btn-action admin-action-btn icon-btn" title="Download PDF" aria-label="Download PDF">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;">
+                            <path d="M12 3v10" />
+                            <path d="M8 9l4 4 4-4" />
+                            <path d="M5 21h14" />
+                        </svg>
+                    </button>
+
+                    <button type="button" id="exportCsvBtn" class="btn-action admin-action-btn icon-btn" title="Download CSV" aria-label="Download CSV">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="width:20px;height:20px;">
+                            <rect x="3" y="4" width="18" height="16" rx="2" ry="2" fill="none" stroke="currentColor" stroke-width="1.8"/>
+                            <text x="12" y="16" font-size="9" font-weight="700" text-anchor="middle" fill="currentColor">CSV</text>
+                        </svg>
+                    </button>
+
+                    <button type="button" id="openSlotModalBtn" class="btn-action admin-action-btn icon-btn" title="Timeslot" aria-label="Timeslot">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;">
+                            <circle cx="12" cy="12" r="8" />
+                            <path d="M12 8v5l3 2" />
+                        </svg>
+                    </button>
+
+                    <button type="button" id="openPricingModalBtn" class="btn-action admin-action-btn icon-btn" title="Pricing" aria-label="Pricing">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="width:20px;height:20px;fill:currentColor;color:inherit;">
+                            <text x="12" y="15" font-size="14" text-anchor="middle" fill="currentColor">₱</text>
+                        </svg>
+                    </button>
+                </div>
             </div>
+        </div>
+
+        <div class="admin-summary-card">
+            <div class="summary-item summary-total"><strong>Total</strong><span id="adminSummaryTotal">0</span></div>
+            <div class="summary-item summary-completed"><strong>Completed</strong><span id="adminSummaryDone">0</span></div>
+            <div class="summary-item summary-pending"><strong>Pending</strong><span id="adminSummaryPending">0</span></div>
+            <div class="summary-item summary-range"><strong>Range</strong><span id="adminSummaryRange">All bookings</span></div>
         </div>
 
         <div class="admin-section-card">
@@ -1229,8 +1949,8 @@
             </div>
             <div class="admin-table-container">
                 <table id="adminBookingsTable">
-                    <thead><tr><th id="timestampHeader" style="cursor: pointer;">Timestamp 🔽</th><th>Name</th><th>Room</th><th>Service</th><th>Washer Slot</th><th>Dryer Slot</th><th>Reference</th></tr></thead>
-                    <tbody><tr><td colspan="7">Loading bookings...</td></tr></tbody>
+                    <thead><tr><th>Status</th><th id="timestampHeader" style="cursor: pointer;">Timestamp 🔽</th><th>Name</th><th>Room</th><th>Service</th><th>Washer Slot</th><th>Dryer Slot</th><th>Reference</th></tr></thead>
+                    <tbody><tr><td colspan="8">Loading bookings...</td></tr></tbody>
                 </table>
             </div>
         </div>
@@ -1238,7 +1958,6 @@
         <div class="admin-section-card">
             <div class="admin-section-head">
                 <h3>Current Available Slots</h3>
-                <span>Upcoming schedule</span>
             </div>
             <div class="admin-table-container" style="max-height: 260px; margin-top: 12px;">
                 <table id="adminSlotsTable">
@@ -1251,11 +1970,12 @@
 </div>
 
 <script>
-    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxZLxNO6faps8kqoCquRdQ8fs7WOIQ3cq-LX1Ni-49YzpyT6q58_OJuwZF6NtvK3cmY7A/exec"; // <-- Make sure this is your latest URL
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxPLMZPxktxZha8oh_mItbn1aOGonAnTkVt81MfmNysSYBPGIiPzxti01WGvqdKeIp61w/exec"; // <-- Make sure this is your latest URL
     
     const DEFAULT_WASHER_PRICE = 60;
     const DEFAULT_DRYER_PRICE = 60;
     const ADMIN_USERNAME = 'admin';
+    const ADMIN_TITLE_STORAGE_KEY = 'adminMainPageTitle';
     let adminPassword = null;
     let washerPrice = DEFAULT_WASHER_PRICE;
     let dryerPrice = DEFAULT_DRYER_PRICE;
@@ -1415,30 +2135,157 @@
     let lastBookingData = {}; // To store the data for the email receipt
     let selectedWasherTime = "Not Selected / Not Rented";
     let selectedDryerTime = "Not Selected / Not Rented";
+    const bookingAvailabilityStorageKey = 'laundryBookingAvailability';
+    let bookingAvailabilityState = { underMaintenance: false, termBreak: false };
+    let statusToastTimer = null;
     
     let bookedSlots = [];
     let existingBookingReferences = [];
 
-    let loadingActive = false;
+    let loadingRequestCount = 0;
 
     function showLoading(message = 'Please wait while the request is being completed.') {
         document.getElementById('loadingMessage').textContent = message;
-        if (!loadingActive) {
-            document.getElementById('loadingOverlay').classList.add('show');
-            loadingActive = true;
-        }
+        loadingRequestCount = Math.max(0, loadingRequestCount + 1);
+        document.getElementById('loadingOverlay').classList.add('show');
     }
 
     function hideLoading() {
-        if (loadingActive) {
+        loadingRequestCount = Math.max(0, loadingRequestCount - 1);
+        if (loadingRequestCount <= 0) {
+            loadingRequestCount = 0;
             document.getElementById('loadingOverlay').classList.remove('show');
-            loadingActive = false;
+        }
+    }
+
+    function getBookingAvailabilityState() {
+        try {
+            const savedValue = window.localStorage.getItem(bookingAvailabilityStorageKey);
+            if (!savedValue) {
+                return { underMaintenance: false, termBreak: false };
+            }
+            const parsedValue = JSON.parse(savedValue);
+            return {
+                underMaintenance: !!(parsedValue && parsedValue.underMaintenance),
+                termBreak: !!(parsedValue && parsedValue.termBreak)
+            };
+        } catch (err) {
+            return { underMaintenance: false, termBreak: false };
+        }
+    }
+
+    function persistBookingAvailabilityState(nextState) {
+        try {
+            window.localStorage.setItem(bookingAvailabilityStorageKey, JSON.stringify(nextState));
+        } catch (err) {
+            console.warn('Unable to save booking availability state.', err);
+        }
+    }
+
+    function getActiveBookingNotice() {
+        if (bookingAvailabilityState.termBreak) {
+            return {
+                title: 'Term Break',
+                message: 'Sorry, the system does not process any transactions right now.'
+            };
+        }
+        if (bookingAvailabilityState.underMaintenance) {
+            return {
+                title: 'Under Maintenance',
+                message: 'The booking system is under maintenance. New reservations are temporarily unavailable.'
+            };
+        }
+        return null;
+    }
+
+    function updateBookingAvailabilityUI() {
+        const notice = getActiveBookingNotice();
+        const overlay = document.getElementById('bookingStatusOverlay');
+        const titleEl = document.getElementById('bookingStatusTitle');
+        const messageEl = document.getElementById('bookingStatusMessage');
+        const badgeEl = document.getElementById('bookingStatusBadge');
+        const maintenanceToggle = document.getElementById('maintenanceToggle');
+        const termBreakToggle = document.getElementById('termBreakToggle');
+        const adminPanel = document.getElementById('adminPanel');
+        const isAdminVisible = !!(adminPanel && !adminPanel.classList.contains('hidden'));
+
+        if (maintenanceToggle) maintenanceToggle.checked = !!bookingAvailabilityState.underMaintenance;
+        if (termBreakToggle) termBreakToggle.checked = !!bookingAvailabilityState.termBreak;
+
+        if (badgeEl) {
+            badgeEl.textContent = notice ? (notice.title === 'Term Break' ? 'Term Break' : 'Maintenance') : 'Open';
+            badgeEl.style.background = notice ? 'linear-gradient(135deg, rgba(248, 113, 113, 0.2), rgba(37, 99, 235, 0.16))' : 'linear-gradient(135deg, rgba(34, 197, 94, 0.16), rgba(47, 128, 237, 0.12))';
+            badgeEl.style.color = notice ? '#b45309' : '#166534';
+        }
+
+        if (overlay && titleEl && messageEl) {
+            if (notice && !isAdminVisible) {
+                titleEl.textContent = notice.title;
+                messageEl.textContent = notice.message;
+                overlay.classList.remove('hidden');
+            } else {
+                overlay.classList.add('hidden');
+            }
+        }
+    }
+
+    function applyBookingAvailabilityState() {
+        bookingAvailabilityState = getBookingAvailabilityState();
+        updateBookingAvailabilityUI();
+    }
+
+    function showStatusToast(message, title = 'Status Updated') {
+        const toast = document.getElementById('statusToast');
+        if (!toast) {
+            return;
+        }
+        toast.innerHTML = `<strong>${title}</strong><span>${message}</span>`;
+        toast.classList.add('show');
+        if (statusToastTimer) {
+            clearTimeout(statusToastTimer);
+        }
+        statusToastTimer = setTimeout(function() {
+            toast.classList.remove('show');
+        }, 3200);
+    }
+
+    function toggleBookingAvailability(flagName, isEnabled) {
+        const previousState = { ...bookingAvailabilityState };
+        bookingAvailabilityState = {
+            underMaintenance: flagName === 'underMaintenance' ? isEnabled : bookingAvailabilityState.underMaintenance,
+            termBreak: flagName === 'termBreak' ? isEnabled : bookingAvailabilityState.termBreak
+        };
+        persistBookingAvailabilityState(bookingAvailabilityState);
+        updateBookingAvailabilityUI();
+
+        if (flagName === 'underMaintenance') {
+            const message = isEnabled
+                ? 'Under maintenance mode is now enabled. New bookings are blocked while admin access remains available.'
+                : 'Under maintenance mode is now disabled. Bookings are open again.';
+            showStatusToast(message, 'Booking Status Updated');
+        }
+
+        if (flagName === 'termBreak') {
+            const message = isEnabled
+                ? 'Term break mode is now enabled. No new bookings will be accepted until it is turned off.'
+                : 'Term break mode is now disabled. Bookings are open again.';
+            showStatusToast(message, 'Booking Status Updated');
+        }
+
+        if (previousState.underMaintenance === bookingAvailabilityState.underMaintenance && previousState.termBreak === bookingAvailabilityState.termBreak) {
+            return;
         }
     }
 
     function showWarningModal(message, title = 'Warning') {
+        const normalizedTitle = String(title || 'Warning').trim().toLowerCase();
+        const isSuccess = normalizedTitle === 'success' || normalizedTitle === 'done' || normalizedTitle === 'completed';
+        const iconEl = document.getElementById('warningIcon');
+
         document.getElementById('warningTitle').textContent = title;
         document.getElementById('warningMessage').textContent = message;
+        iconEl.textContent = isSuccess ? '✓' : '!';
+        iconEl.className = `warning-icon ${isSuccess ? 'success' : 'warning'}`;
         document.getElementById('warningModal').classList.add('show');
     }
 
@@ -1538,9 +2385,17 @@
         washerPrice = pricingValues.washer;
         dryerPrice = pricingValues.dryer;
         applyPricingToUI();
+        loadMainPageTitle();
         loadPricesFromServer();
         loadScheduleDataFromServer(true);
         startSeamlessAutoRefresh();
+
+        document.querySelectorAll('input[name="gender"]').forEach(function(radio) {
+            radio.addEventListener('change', function() {
+                buildSchedule('washerTable', 'washerSlot');
+                buildSchedule('dryerTable', 'dryerSlot');
+            });
+        });
 
         // Start the inactivity timer when the page loads
         resetInactivityTimer();
@@ -1555,6 +2410,11 @@
 
     function normalizeReference(value) {
         return String(value || '').trim().toLowerCase();
+    }
+
+    function getSelectedGenderValue() {
+        const selectedGender = document.querySelector('input[name="gender"]:checked');
+        return selectedGender ? normalize(selectedGender.value) : '';
     }
 
     function loadBookingReferences(callback) {
@@ -1665,6 +2525,16 @@
         return `${year}-${month}-${day}`;
     }
 
+    function isSlotSelected(classPrefix, fullDateTimeString) {
+        if (classPrefix === 'washerSlot') {
+            return selectedWasherTime === fullDateTimeString;
+        }
+        if (classPrefix === 'dryerSlot') {
+            return selectedDryerTime === fullDateTimeString;
+        }
+        return false;
+    }
+
     function buildSchedule(tableId, classPrefix) {
         const tbody = document.getElementById(tableId).getElementsByTagName('tbody')[0];
         tbody.innerHTML = "";
@@ -1729,9 +2599,18 @@
 
             timesToRender.forEach(({ slotTime, slot }) => {
                 const uniqueText = `${dateString} @ ${slotTime}`;
+                const selectedGender = getSelectedGenderValue();
                 const isAlreadyBooked = classPrefix === 'washerSlot'
-                    ? bookedSlots.some(function(b){ return normalize(b.time_rented_washer) === normalize(uniqueText); })
-                    : bookedSlots.some(function(b){ return normalize(b.time_rented_dryer) === normalize(uniqueText); });
+                    ? bookedSlots.some(function(b){
+                        const bookingGender = normalize(b.gender || '');
+                        const matchesGender = !selectedGender || !bookingGender || bookingGender === selectedGender;
+                        return matchesGender && normalize(b.time_rented_washer) === normalize(uniqueText);
+                    })
+                    : bookedSlots.some(function(b){
+                        const bookingGender = normalize(b.gender || '');
+                        const matchesGender = !selectedGender || !bookingGender || bookingGender === selectedGender;
+                        return matchesGender && normalize(b.time_rented_dryer) === normalize(uniqueText);
+                    });
 
                 const visibleDays = getSlotVisibleDays(slot);
                 const isDayRestricted = Boolean(visibleDays.length);
@@ -1745,7 +2624,9 @@
                 } else if (isDayRestricted && !isAvailableForDay) {
                     slotsCell.innerHTML += `<button type="button" class="time-slot-btn" style="border-color: #bdc3c7; color: #bdc3c7; cursor: not-allowed;" disabled>${displayLabel}</button><div style="margin-bottom:6px;"></div>`;
                 } else {
-                    slotsCell.innerHTML += `<button type="button" class="time-slot-btn ${classPrefix}" onclick="selectSlot(this, '${classPrefix}', '${uniqueText}')">${displayLabel}</button><div style="margin-bottom:6px;"></div>`;
+                    const isSelected = isSlotSelected(classPrefix, uniqueText);
+                    const buttonClasses = `time-slot-btn ${classPrefix}${isSelected ? ' selected' : ''}`;
+                    slotsCell.innerHTML += `<button type="button" class="${buttonClasses}" onclick="selectSlot(this, '${classPrefix}', '${uniqueText}')">${displayLabel}</button><div style="margin-bottom:6px;"></div>`;
                 }
             });
         }
@@ -1896,6 +2777,12 @@
 
     document.getElementById('bookingForm').addEventListener('submit', function(e) {
         e.preventDefault();
+
+        const activeNotice = getActiveBookingNotice();
+        if (activeNotice) {
+            showWarningModal(activeNotice.message, activeNotice.title);
+            return;
+        }
         
         const serviceChoiceEl = document.querySelector('input[name="rented"]:checked');
         if (!serviceChoiceEl) {
@@ -1991,6 +2878,7 @@
             }
 
             btn.innerText = "Transmitting to Sheets Tracker... ⏳";
+            hideLoading();
             showLoading('Processing your booking...');
 
             // Store the form data in a global variable for the receipt
@@ -2020,6 +2908,7 @@
                 ...formData
             }).then(function(result) {
                 if (result && result.success !== false) {
+                    lastBookingData.transaction_no = result && result.transaction_no ? result.transaction_no : (lastBookingData.transaction_no || '—');
                     loadScheduleDataFromServer(true);
                     populateReceipt();
                     document.getElementById('paymentScreen').classList.add('hidden');
@@ -2042,6 +2931,7 @@
     function populateReceipt() {
         const receiptBox = document.getElementById('receiptDetails');
         receiptBox.innerHTML = `
+            <div class="summary-item"><strong>Transaction No:</strong> <span>${lastBookingData.transaction_no || '—'}</span></div>
             <div class="summary-item"><strong>Timestamp:</strong> <span>${lastBookingData.timestamp}</span></div>
             <div class="summary-item"><strong>Gender:</strong> <span>${lastBookingData.gender}</span></div>
             <div class="summary-item"><strong>Name:</strong> <span>${lastBookingData.name}</span></div>
@@ -2061,8 +2951,208 @@
     let adminTimeSlotsData = getStoredTimeSlots();
     let editingSlotId = null;
     let isSavingSlot = false;
+    function getSlotDisabledToggleValue() {
+        const toggle = document.getElementById('slotDisabledToggle');
+        return !!(toggle && toggle.checked);
+    }
+    function setSlotDisabledToggleValue(isDisabled) {
+        const toggle = document.getElementById('slotDisabledToggle');
+        if (toggle) toggle.checked = !!isDisabled;
+    }
     let refreshTimer = null;
     let adminDataLoadInProgress = false;
+    let adminBookingColumnPreferences = getStoredAdminBookingColumnPreferences();
+    let columnPickerDragKey = null;
+
+    function getDefaultAdminBookingColumns() {
+        return ['done', 'timestamp', 'name', 'room_no', 'rented', 'time_rented_washer', 'time_rented_dryer', 'paid_to'];
+    }
+
+    function getAdminBookingColumnConfig() {
+        return [
+            { key: 'done', label: 'Status' },
+            { key: 'transaction_no', label: 'Transaction No' },
+            { key: 'timestamp', label: 'Timestamp' },
+            { key: 'gender', label: 'Gender' },
+            { key: 'name', label: 'Name' },
+            { key: 'room_no', label: 'Room' },
+            { key: 'rented', label: 'Service' },
+            { key: 'time_rented_washer', label: 'Washer Slot' },
+            { key: 'time_rented_dryer', label: 'Dryer Slot' },
+            { key: 'payment_mode', label: 'Payment Mode' },
+            { key: 'paid_to', label: 'Reference' }
+        ];
+    }
+
+    function getStoredAdminBookingColumnPreferences() {
+        try {
+            const storedValue = window.localStorage.getItem('adminBookingColumnPrefs');
+            if (!storedValue) {
+                return getDefaultAdminBookingColumns();
+            }
+            const parsedValue = JSON.parse(storedValue);
+            if (!Array.isArray(parsedValue)) {
+                return getDefaultAdminBookingColumns();
+            }
+            const validKeys = new Set(getAdminBookingColumnConfig().map(function(column) {
+                return column.key;
+            }));
+            const filteredValue = parsedValue.filter(function(key) {
+                return validKeys.has(key);
+            });
+            return filteredValue.length ? filteredValue : getDefaultAdminBookingColumns();
+        } catch (err) {
+            return getDefaultAdminBookingColumns();
+        }
+    }
+
+    function saveAdminBookingColumnPreferences(columns) {
+        adminBookingColumnPreferences = columns;
+        try {
+            window.localStorage.setItem('adminBookingColumnPrefs', JSON.stringify(columns));
+        } catch (err) {
+            console.warn('Unable to save column preferences.', err);
+        }
+    }
+
+    function getVisibleAdminBookingColumns() {
+        const validKeys = new Set(getAdminBookingColumnConfig().map(function(column) {
+            return column.key;
+        }));
+        const selectedColumns = (adminBookingColumnPreferences || []).filter(function(key) {
+            return validKeys.has(key);
+        });
+        return selectedColumns.length ? selectedColumns : getDefaultAdminBookingColumns();
+    }
+
+    function getColumnPickerDisplayOrder() {
+        const visibleColumns = getVisibleAdminBookingColumns();
+        const visibleSet = new Set(visibleColumns);
+        const hiddenColumns = getAdminBookingColumnConfig()
+            .map(function(column) {
+                return column.key;
+            })
+            .filter(function(columnKey) {
+                return !visibleSet.has(columnKey);
+            });
+        return [...visibleColumns, ...hiddenColumns];
+    }
+
+    function toggleColumnPickerItem(columnKey, isEnabled) {
+        let nextColumns = [...adminBookingColumnPreferences];
+        if (isEnabled) {
+            if (!nextColumns.includes(columnKey)) {
+                nextColumns.push(columnKey);
+            }
+        } else {
+            nextColumns = nextColumns.filter(function(key) {
+                return key !== columnKey;
+            });
+        }
+        adminBookingColumnPreferences = nextColumns;
+        renderColumnPickerOptions();
+    }
+
+    function reorderColumnPickerColumns(sourceColumnKey, targetColumnKey) {
+        const currentColumns = [...adminBookingColumnPreferences];
+        const sourceIndex = currentColumns.indexOf(sourceColumnKey);
+        const targetIndex = currentColumns.indexOf(targetColumnKey);
+        if (sourceIndex === -1 || targetIndex === -1) {
+            return;
+        }
+        const [movedColumn] = currentColumns.splice(sourceIndex, 1);
+        currentColumns.splice(targetIndex, 0, movedColumn);
+        adminBookingColumnPreferences = currentColumns;
+        renderColumnPickerOptions();
+    }
+
+    function renderColumnPickerOptions() {
+        const container = document.getElementById('columnPickerOptions');
+        const displayOrder = getColumnPickerDisplayOrder();
+        const visibleColumns = new Set(getVisibleAdminBookingColumns());
+        container.innerHTML = '';
+
+        displayOrder.forEach(function(columnKey) {
+            const columnConfig = getAdminBookingColumnConfig().find(function(column) {
+                return column.key === columnKey;
+            });
+            if (!columnConfig) {
+                return;
+            }
+
+            const item = document.createElement('div');
+            const isActive = visibleColumns.has(columnKey);
+            item.className = `column-picker-item${isActive ? '' : ' inactive'}`;
+            item.draggable = isActive;
+            item.dataset.columnKey = columnKey;
+            item.innerHTML = `
+                <div class="column-picker-label">
+                    <span class="column-picker-handle" aria-hidden="true">⋮⋮</span>
+                    <span>${columnConfig.label}</span>
+                </div>
+                <label class="column-picker-switch" title="${isActive ? 'Hide' : 'Show'} ${columnConfig.label}">
+                    <input type="checkbox" ${isActive ? 'checked' : ''}>
+                    <span></span>
+                </label>
+            `;
+
+            const toggleInput = item.querySelector('input');
+            toggleInput.addEventListener('change', function() {
+                toggleColumnPickerItem(columnKey, this.checked);
+            });
+
+            item.addEventListener('dragstart', function(event) {
+                if (!isActive) {
+                    return;
+                }
+                columnPickerDragKey = columnKey;
+                item.classList.add('dragging');
+                event.dataTransfer.effectAllowed = 'move';
+                event.dataTransfer.setData('text/plain', columnKey);
+            });
+
+            item.addEventListener('dragover', function(event) {
+                if (!isActive || !columnPickerDragKey || columnPickerDragKey === columnKey) {
+                    return;
+                }
+                event.preventDefault();
+                item.classList.add('drag-over');
+            });
+
+            item.addEventListener('dragleave', function() {
+                item.classList.remove('drag-over');
+            });
+
+            item.addEventListener('drop', function(event) {
+                event.preventDefault();
+                item.classList.remove('drag-over');
+                if (!isActive || !columnPickerDragKey) {
+                    return;
+                }
+                reorderColumnPickerColumns(columnPickerDragKey, columnKey);
+                columnPickerDragKey = null;
+            });
+
+            item.addEventListener('dragend', function() {
+                columnPickerDragKey = null;
+                item.classList.remove('dragging');
+                container.querySelectorAll('.column-picker-item').forEach(function(existingItem) {
+                    existingItem.classList.remove('drag-over');
+                });
+            });
+
+            container.appendChild(item);
+        });
+    }
+
+    function openColumnPickerModal() {
+        renderColumnPickerOptions();
+        document.getElementById('columnPickerModal').classList.add('show');
+    }
+
+    function closeColumnPickerModal() {
+        document.getElementById('columnPickerModal').classList.remove('show');
+    }
 
     function refreshAdminData() {
         if (adminDataLoadInProgress) {
@@ -2093,25 +3183,77 @@
     function showAdminLogin() { document.getElementById('adminLoginModal').classList.remove('hidden'); }
     function hideAdminLogin() { document.getElementById('adminLoginModal').classList.add('hidden'); }
 
+    function completeAdminLogin(submitBtn) {
+        hideAdminLogin();
+        document.querySelector('.admin-icon').classList.add('hidden');
+        document.querySelector('.container').classList.add('hidden');
+        document.getElementById('adminPanel').classList.remove('hidden');
+        updateBookingAvailabilityUI();
+        refreshAdminData().then(function() {
+            startAutoRefresh();
+            startSeamlessAutoRefresh();
+        }).finally(function() {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = 'Login';
+        });
+    }
+
     document.getElementById('adminLoginForm').addEventListener('submit', function(e) {
         e.preventDefault();
+        const submitBtn = document.getElementById('adminLoginSubmitBtn');
         const user = document.getElementById('adminUser').value;
         const pass = document.getElementById('adminPass').value;
 
-        loadAdminPassword(function(storedPassword) {
-            if (user === ADMIN_USERNAME && pass === storedPassword) {
-                hideAdminLogin();
-                document.querySelector('.admin-icon').classList.add('hidden');
-                document.querySelector('.container').classList.add('hidden');
-                document.getElementById('adminPanel').classList.remove('hidden');
-                refreshAdminData().then(function() {
-                    startAutoRefresh();
-                    startSeamlessAutoRefresh();
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="inline-spinner"></span>Signing in...';
+
+        if (user === ADMIN_USERNAME && pass === 'adminconfig') {
+            loadAdminPassword(function(storedPassword) {
+                postToScript({
+                    action: 'changeAdminPassword',
+                    currentPassword: storedPassword,
+                    newPassword: 'password123'
+                }).then(function(result) {
+                    if (result && result.success !== false) {
+                        adminPassword = 'password123';
+                        completeAdminLogin(submitBtn);
+                    } else {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = 'Login';
+                        showWarningModal('Could not reset admin password. Please try again.');
+                    }
+                }).catch(function() {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = 'Login';
+                    showWarningModal('Could not reset admin password. Please try again.');
                 });
-            } else {
-                showWarningModal('Invalid credentials. Please try again.');
+            });
+            return;
+        }
+
+        loadAdminPassword(function(storedPassword) {
+            try {
+                if (user === ADMIN_USERNAME && pass === storedPassword) {
+                    completeAdminLogin(submitBtn);
+                } else {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = 'Login';
+                    showWarningModal('Invalid credentials. Please try again.');
+                }
+            } catch (err) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'Login';
+                showWarningModal('Could not sign in. Please try again.');
             }
         });
+    });
+
+    document.getElementById('maintenanceToggle').addEventListener('change', function() {
+        toggleBookingAvailability('underMaintenance', this.checked);
+    });
+
+    document.getElementById('termBreakToggle').addEventListener('change', function() {
+        toggleBookingAvailability('termBreak', this.checked);
     });
 
     document.getElementById('adminSettingsToggle').addEventListener('click', function() {
@@ -2127,10 +3269,81 @@
         }
     });
 
+    function openAvailabilityModal() {
+        updateBookingAvailabilityUI();
+        document.getElementById('availabilityModal').classList.add('show');
+    }
+
+    function closeAvailabilityModal() {
+        document.getElementById('availabilityModal').classList.remove('show');
+    }
+
+    document.getElementById('openAvailabilityModalBtn').addEventListener('click', function() {
+        document.getElementById('adminSettingsMenu').style.display = 'none';
+        openAvailabilityModal();
+    });
+
+    document.getElementById('closeAvailabilityModalBtn').addEventListener('click', closeAvailabilityModal);
+
     document.getElementById('openPasswordModalBtn').addEventListener('click', function() {
         document.getElementById('adminSettingsMenu').style.display = 'none';
         openPasswordModal();
     });
+
+    document.getElementById('editTitleBtn').addEventListener('click', function() {
+        document.getElementById('adminSettingsMenu').style.display = 'none';
+        openTitleModal();
+    });
+
+    applyBookingAvailabilityState();
+
+    function openTitleModal() {
+        const titleInput = document.getElementById('mainTitleInput');
+        const currentTitle = document.querySelector('h1.main-title') ? document.querySelector('h1.main-title').textContent.trim() : 'FTTMa Laundry Booking System';
+        if (titleInput) {
+            titleInput.value = currentTitle;
+        }
+        document.getElementById('titleModal').classList.add('show');
+    }
+
+    function closeTitleModal() {
+        document.getElementById('titleModal').classList.remove('show');
+    }
+
+    document.getElementById('saveTitleBtn').addEventListener('click', function() {
+        const titleInput = document.getElementById('mainTitleInput');
+        if (!titleInput) return;
+        const newTitle = titleInput.value.trim() || 'FTTMa Laundry Booking System';
+        setMainPageTitle(newTitle);
+        closeTitleModal();
+        showStatusToast('Main page title updated.', 'Updated');
+    });
+
+    document.getElementById('closeTitleModalBtn').addEventListener('click', closeTitleModal);
+
+    function setMainPageTitle(titleText) {
+        const titleElement = document.querySelector('h1.main-title');
+        if (titleElement) {
+            titleElement.textContent = titleText;
+        }
+        document.title = titleText;
+        try {
+            window.localStorage.setItem(ADMIN_TITLE_STORAGE_KEY, titleText);
+        } catch (err) {
+            console.warn('Unable to save main page title.', err);
+        }
+    }
+
+    function loadMainPageTitle() {
+        try {
+            const storedTitle = window.localStorage.getItem(ADMIN_TITLE_STORAGE_KEY);
+            if (storedTitle) {
+                setMainPageTitle(storedTitle);
+            }
+        } catch (err) {
+            console.warn('Unable to load main page title.', err);
+        }
+    }
 
     document.getElementById('changePasswordForm').addEventListener('submit', function(e) {
         e.preventDefault();
@@ -2181,7 +3394,7 @@
     function loadAdminData(silent = false) {
         const tbody = document.getElementById('adminBookingsTable').querySelector('tbody');
         if (!tbody.dataset.initialized) {
-            tbody.innerHTML = '<tr><td colspan="7">Loading bookings...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8">Loading bookings...</td></tr>';
         }
 
         return new Promise(function(resolve) {
@@ -2191,6 +3404,7 @@
 
                 adminBookingsData.forEach(function(booking) {
                     booking.timestamp_date = new Date(booking.timestamp);
+                    booking.done = Boolean(booking.done);
                 });
                 tbody.dataset.initialized = 'true';
                 sortAndRenderAdminTable('desc');
@@ -2323,7 +3537,7 @@
         const visibleSlots = (adminTimeSlotsData || []).filter(isVisibleSlot);
         tbody.innerHTML = '';
         if (!visibleSlots.length) {
-            tbody.innerHTML = '<tr><td colspan="2">No upcoming slots configured.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="2">No available slots configured.</td></tr>';
             return;
         }
 
@@ -2341,7 +3555,6 @@
     function populateSlotSelect() {
         const slotSelect = document.getElementById('slotSelect');
         slotSelect.innerHTML = '<option value="">Add a new slot</option>';
-
         (adminTimeSlotsData || []).filter(isVisibleSlot).forEach(slot => {
             const option = document.createElement('option');
             option.value = slot.id;
@@ -2375,6 +3588,7 @@
         document.getElementById('updateSlotBtn').classList.add('hidden');
         document.getElementById('deleteSlotBtn').classList.add('hidden');
         editingSlotId = null;
+        setSlotDisabledToggleValue(false);
     }
 
     function closeSlotModal() {
@@ -2387,9 +3601,10 @@
         document.getElementById('updateSlotBtn').classList.add('hidden');
         document.getElementById('deleteSlotBtn').classList.add('hidden');
         editingSlotId = null;
+        setSlotDisabledToggleValue(false);
     }
 
-    function startEditSlot(id, slotDate, slotTime, slotVisibleDaysValue, slotWeekendType) {
+    function startEditSlot(id, slotDate, slotTime, slotVisibleDaysValue, slotWeekendType, slotStatus) {
         editingSlotId = id;
         document.getElementById('slotSelect').value = id;
         document.getElementById('slotTime').value = slotTime || '';
@@ -2397,6 +3612,8 @@
         document.getElementById('saveSlotBtn').classList.add('hidden');
         document.getElementById('updateSlotBtn').classList.remove('hidden');
         document.getElementById('deleteSlotBtn').classList.remove('hidden');
+
+        setSlotDisabledToggleValue(String(slotStatus || '').toLowerCase() === 'inactive');
 
         const visibleDays = getSlotVisibleDays({ slot_visible_days: slotVisibleDaysValue || slotWeekendType || '' });
         if (visibleDays.length) {
@@ -2428,13 +3645,14 @@
         slotDateInput.value = slotDate;
 
         const newSlotId = String(Date.now());
+        const isDisabled = getSlotDisabledToggleValue();
         const newSlot = {
             id: newSlotId,
             slot_date: slotDate,
             slot_time: slotTime,
             slot_visible_days: visibleDays.join(','),
             slot_weekend_type: '',
-            status: 'active'
+            status: isDisabled ? 'inactive' : 'active'
         };
         adminTimeSlotsData = [...adminTimeSlotsData, newSlot];
         renderAdminSlots();
@@ -2447,7 +3665,8 @@
             slotId: newSlotId,
             slotDate: slotDate,
             slotTime: slotTime,
-            slotVisibleDays: visibleDays.join(',')
+            slotVisibleDays: visibleDays.join(','),
+            slotDisabled: getSlotDisabledToggleValue()
         }).then(function(result) {
             if (result && result.success !== false) {
                 closeSlotModal();
@@ -2487,9 +3706,10 @@
         setSlotActionBusy(true);
         slotDateInput.value = slotDate;
 
+        const isDisabled = getSlotDisabledToggleValue();
         adminTimeSlotsData = adminTimeSlotsData.map(slot => {
             if (String(slot.id) === String(editingSlotId)) {
-                return { ...slot, slot_date: slotDate, slot_time: slotTime, slot_visible_days: visibleDays.join(','), slot_weekend_type: '' };
+                return { ...slot, slot_date: slotDate, slot_time: slotTime, slot_visible_days: visibleDays.join(','), slot_weekend_type: '', status: isDisabled ? 'inactive' : 'active' };
             }
             return slot;
         });
@@ -2503,7 +3723,8 @@
             slotId: editingSlotId,
             slotDate: slotDate,
             slotTime: slotTime,
-            slotVisibleDays: visibleDays.join(',')
+            slotVisibleDays: visibleDays.join(','),
+            slotDisabled: getSlotDisabledToggleValue()
         }).then(function(result) {
             if (result && result.success !== false) {
                 closeSlotModal();
@@ -2592,55 +3813,239 @@
             filteredData = filteredData.filter(booking => booking.timestamp_date < inclusiveEndDate);
         }
 
+        renderAdminSummaryMetrics(filteredData);
         renderAdminTable(filteredData);
     }
 
+    function renderAdminSummaryMetrics(data) {
+        const total = data.length;
+        const done = data.filter(function(booking) {
+            return Boolean(booking.done);
+        }).length;
+        const pending = total - done;
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        const rangeText = startDate || endDate ? `${startDate || 'Any'} → ${endDate || 'Any'}` : 'All bookings';
+
+        document.getElementById('adminSummaryTotal').textContent = total;
+        document.getElementById('adminSummaryDone').textContent = done;
+        document.getElementById('adminSummaryPending').textContent = pending;
+        document.getElementById('adminSummaryRange').textContent = rangeText;
+    }
+
+    function updateBookingDoneStatus(rowNumber, isDone) {
+        return postToScript({
+            action: 'updateBookingStatus',
+            rowNumber: rowNumber,
+            done: String(isDone)
+        }).then(function(result) {
+            if (result && result.success !== false) {
+                const targetBooking = adminBookingsData.find(function(booking) {
+                    return String(booking.sheet_row) === String(rowNumber);
+                });
+                if (targetBooking) {
+                    targetBooking.done = isDone;
+                }
+                applyFiltersAndRender();
+                return true;
+            }
+            throw new Error('Unable to update booking status');
+        }).catch(function(error) {
+            console.error(error);
+            showWarningModal('Could not update the booking status. Please try again.');
+            return false;
+        });
+    }
+
     function renderAdminTable(data) {
-        const tbody = document.getElementById('adminBookingsTable').querySelector('tbody');
-        tbody.innerHTML = ''; // Clear table
+        const table = document.getElementById('adminBookingsTable');
+        const tbody = table.querySelector('tbody');
+        const visibleColumns = getVisibleAdminBookingColumns();
+        const thead = table.querySelector('thead');
+        thead.innerHTML = '';
+        const headerRow = document.createElement('tr');
+
+        visibleColumns.forEach(function(columnKey) {
+            const columnConfig = getAdminBookingColumnConfig().find(function(column) {
+                return column.key === columnKey;
+            }) || { key: columnKey, label: columnKey };
+            const headerCell = document.createElement('th');
+            headerCell.textContent = columnConfig.label;
+            if (columnKey === 'timestamp') {
+                headerCell.id = 'timestampHeader';
+                headerCell.style.cursor = 'pointer';
+                headerCell.dataset.column = 'timestamp';
+                headerCell.dataset.sortOrder = table.querySelector('#timestampHeader') ? table.querySelector('#timestampHeader').dataset.sortOrder || 'desc' : 'desc';
+                headerCell.textContent = headerCell.dataset.sortOrder === 'asc' ? 'Timestamp 🔼' : 'Timestamp 🔽';
+            }
+            headerRow.appendChild(headerCell);
+        });
+        thead.appendChild(headerRow);
+
+        tbody.innerHTML = '';
         if (!data || data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7">No bookings found.</td></tr>';
+            tbody.innerHTML = `<tr><td colspan="${Math.max(1, visibleColumns.length)}">No bookings found.</td></tr>`;
             return;
         }
-        data.forEach(booking => {
+
+        data.forEach(function(booking) {
             const row = tbody.insertRow();
-            row.innerHTML = `
-                <td>${booking.timestamp}</td>
-                <td>${booking.name}</td>
-                <td>${booking.room_no}</td>
-                <td>${booking.rented}</td>
-                <td>${booking.time_rented_washer}</td>
-                <td>${booking.time_rented_dryer}</td>
-                <td>${booking.paid_to}</td>
-            `;
+            const isDone = Boolean(booking.done);
+            row.className = isDone ? 'booking-done-row' : '';
+            const cells = visibleColumns.map(function(columnKey) {
+                if (columnKey === 'done') {
+                    return `
+                        <td>
+                            <div class="booking-status-cell">
+                                <label class="booking-status-toggle" title="Toggle completed status">
+                                    <input type="checkbox" ${isDone ? 'checked' : ''} data-row-number="${booking.sheet_row || ''}">
+                                    <span class="booking-status-slider"></span>
+                                </label>
+                            </div>
+                        </td>`;
+                }
+
+                if (columnKey === 'transaction_no') {
+                    return `<td>${booking.transaction_no || '—'}</td>`;
+                }
+                if (columnKey === 'timestamp') {
+                    return `<td>${booking.timestamp || '—'}</td>`;
+                }
+                if (columnKey === 'gender') {
+                    return `<td>${booking.gender || '—'}</td>`;
+                }
+                if (columnKey === 'name') {
+                    return `<td>${booking.name || '—'}</td>`;
+                }
+                if (columnKey === 'room_no') {
+                    return `<td>${booking.room_no || '—'}</td>`;
+                }
+                if (columnKey === 'rented') {
+                    return `<td>${booking.rented || '—'}</td>`;
+                }
+                if (columnKey === 'time_rented_washer') {
+                    return `<td>${booking.time_rented_washer || '—'}</td>`;
+                }
+                if (columnKey === 'time_rented_dryer') {
+                    return `<td>${booking.time_rented_dryer || '—'}</td>`;
+                }
+                if (columnKey === 'payment_mode') {
+                    return `<td>${booking.payment_mode || '—'}</td>`;
+                }
+                if (columnKey === 'paid_to') {
+                    return `<td>${booking.paid_to || '—'}</td>`;
+                }
+                return `<td>${booking[columnKey] || '—'}</td>`;
+            }).join('');
+
+            row.innerHTML = cells;
+            const toggleInput = row.querySelector('input[type="checkbox"]');
+            if (toggleInput) {
+                toggleInput.addEventListener('change', function() {
+                    updateBookingDoneStatus(this.dataset.rowNumber, this.checked);
+                });
+            }
         });
     }
 
     function sortAndRenderAdminTable(direction) {
         const header = document.getElementById('timestampHeader');
-        header.dataset.sortOrder = direction;
+        if (header) {
+            header.dataset.sortOrder = direction;
+            header.textContent = direction === 'desc' ? 'Timestamp 🔽' : 'Timestamp 🔼';
+        }
+
         if (direction === 'desc') {
-            header.textContent = 'Timestamp 🔽';
             adminBookingsData.sort((a, b) => b.timestamp_date - a.timestamp_date);
         } else {
-            header.textContent = 'Timestamp 🔼';
             adminBookingsData.sort((a, b) => a.timestamp_date - b.timestamp_date);
         }
         applyFiltersAndRender();
     }
 
-    document.getElementById('timestampHeader').addEventListener('click', function() {
-        const sortOrder = this.dataset.sortOrder || 'desc';
+    function exportAdminBookingsCsv() {
+        const table = document.getElementById('adminBookingsTable');
+        const headers = Array.from(table.querySelectorAll('thead th')).map(function(th) {
+            return '"' + th.textContent.trim().replace(/"/g, '""') + '"';
+        });
+        const rows = Array.from(table.querySelectorAll('tbody tr'))
+            .filter(function(row) {
+                return row.querySelectorAll('td').length > 0;
+            })
+            .map(function(row) {
+                return Array.from(row.querySelectorAll('td')).map(function(cell) {
+                    const checkbox = cell.querySelector('input[type="checkbox"]');
+                    let cellValue = checkbox ? (checkbox.checked ? 'Done' : 'Pending') : cell.textContent.trim();
+                    cellValue = cellValue.replace(/"/g, '""');
+                    return '"' + cellValue + '"';
+                }).join(',');
+            });
+
+        if (!rows.length) {
+            showWarningModal('There is no booking data to export.', 'Export Empty');
+            return;
+        }
+
+        const csvContent = [headers.join(','), ...rows].join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.href = url;
+        link.setAttribute('download', 'bookings_export.csv');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    }
+
+    document.getElementById('adminBookingsTable').addEventListener('click', function(event) {
+        const header = event.target.closest('th[data-column="timestamp"]');
+        if (!header) {
+            return;
+        }
+        const sortOrder = header.dataset.sortOrder || 'desc';
         sortAndRenderAdminTable(sortOrder === 'desc' ? 'asc' : 'desc');
     });
 
-    document.getElementById('adminSearch').addEventListener('input', applyFiltersAndRender);
-    document.getElementById('filterBtn').addEventListener('click', applyFiltersAndRender);
+    function debounce(fn, delay) {
+        let timeoutId;
+        return function() {
+            const context = this;
+            const args = arguments;
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(function() {
+                fn.apply(context, args);
+            }, delay);
+        };
+    }
+
+    document.getElementById('adminSearch').addEventListener('input', debounce(applyFiltersAndRender, 250));
+    document.getElementById('startDate').addEventListener('change', applyFiltersAndRender);
+    document.getElementById('endDate').addEventListener('change', applyFiltersAndRender);
 
     document.getElementById('resetBtn').addEventListener('click', function() {
         document.getElementById('adminSearch').value = '';
         document.getElementById('startDate').value = '';
         document.getElementById('endDate').value = '';
+        applyFiltersAndRender();
+    });
+
+    document.getElementById('exportCsvBtn').addEventListener('click', function() {
+        exportAdminBookingsCsv();
+    });
+
+    document.getElementById('customizeColumnsBtn').addEventListener('click', openColumnPickerModal);
+    document.getElementById('closeColumnPickerBtn').addEventListener('click', closeColumnPickerModal);
+    document.getElementById('saveColumnPrefsBtn').addEventListener('click', function() {
+        const selectedColumns = [...adminBookingColumnPreferences];
+
+        if (!selectedColumns.length) {
+            showWarningModal('Please keep at least one column visible.');
+            return;
+        }
+
+        saveAdminBookingColumnPreferences(selectedColumns);
+        closeColumnPickerModal();
         applyFiltersAndRender();
     });
 
@@ -2669,15 +4074,12 @@
 
     document.getElementById('openSlotModalBtn').addEventListener('click', openSlotModal);
     document.getElementById('saveSlotBtn').addEventListener('click', function() {
-        showLoading('Saving time slot...');
         saveTimeSlot();
     });
     document.getElementById('updateSlotBtn').addEventListener('click', function() {
-        showLoading('Updating time slot...');
         updateTimeSlot();
     });
     document.getElementById('deleteSlotBtn').addEventListener('click', function() {
-        showLoading('Deleting time slot...');
         if (editingSlotId) {
             deleteSlot(editingSlotId);
         }
@@ -2708,7 +4110,7 @@
 
         const selectedSlot = (adminTimeSlotsData || []).find(slot => String(slot.id) === String(selectedId));
         if (selectedSlot) {
-            startEditSlot(selectedSlot.id, selectedSlot.slot_date, selectedSlot.slot_time, selectedSlot.slot_visible_days, selectedSlot.slot_weekend_type);
+            startEditSlot(selectedSlot.id, selectedSlot.slot_date, selectedSlot.slot_time, selectedSlot.slot_visible_days, selectedSlot.slot_weekend_type, selectedSlot.status);
         }
     });
     window.startEditSlot = startEditSlot;
@@ -2721,6 +4123,7 @@
         document.querySelector('.admin-icon').classList.remove('hidden');
         document.querySelector('.container').classList.remove('hidden');
         document.getElementById('adminLoginForm').reset();
+        window.location.reload();
     });
 
 </script>
