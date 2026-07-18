@@ -1970,23 +1970,28 @@
 </div>
 
 <script>
-    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxPLMZPxktxZha8oh_mItbn1aOGonAnTkVt81MfmNysSYBPGIiPzxti01WGvqdKeIp61w/exec"; // <-- Make sure this is your latest URL
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJxoKe5JFN7KE5Zq_ZLSPgiq9QEh6SW7AkhjKKAh0TDDS--GZcqSb1lw0qLSb5unQZwA/exec"; // <-- Make sure this is your latest URL
     
     const DEFAULT_WASHER_PRICE = 60;
     const DEFAULT_DRYER_PRICE = 60;
     const ADMIN_USERNAME = 'admin';
-    const ADMIN_TITLE_STORAGE_KEY = 'adminMainPageTitle';
     let adminPassword = null;
     let washerPrice = DEFAULT_WASHER_PRICE;
     let dryerPrice = DEFAULT_DRYER_PRICE;
+    let adminMainPageTitle = 'FTTMa Laundry Booking System';
+    let bookingAvailabilityState = { underMaintenance: false, termBreak: false };
+    let adminBookingColumnPreferences = getDefaultAdminBookingColumns();
     let autoRefreshTimer = null;
     let autoRefreshInProgress = false;
 
     function postToScript(payload) {
         const searchParams = new URLSearchParams();
         Object.keys(payload || {}).forEach(function(key) {
-            const value = payload[key];
+            var value = payload[key];
             if (value !== undefined && value !== null) {
+                if (typeof value === 'object') {
+                    value = JSON.stringify(value);
+                }
                 searchParams.append(key, String(value));
             }
         });
@@ -2132,11 +2137,63 @@
         document.body.appendChild(script);
     }
 
+    function saveAdminSettings(payload) {
+        return postToScript(Object.assign({ action: 'saveAdminSettings' }, payload));
+    }
+
+    function loadAdminSettings(callback, silent = false) {
+        const callbackName = 'onAdminSettingsLoaded' + Date.now();
+        window[callbackName] = function(data) {
+            delete window[callbackName];
+            const title = data && typeof data.title === 'string' && data.title.trim() ? data.title.trim() : 'FTTMa Laundry Booking System';
+            adminMainPageTitle = title;
+            setMainPageTitle(adminMainPageTitle);
+
+            if (Array.isArray(data && data.columnPreferences)) {
+                const validKeys = new Set(getAdminBookingColumnConfig().map(function(column) {
+                    return column.key;
+                }));
+                const filteredColumns = data.columnPreferences.filter(function(key) {
+                    return typeof key === 'string' && validKeys.has(key);
+                });
+                if (filteredColumns.length) {
+                    adminBookingColumnPreferences = filteredColumns;
+                }
+            }
+
+            if (data && typeof data.bookingAvailabilityState === 'object' && data.bookingAvailabilityState !== null) {
+                bookingAvailabilityState = {
+                    underMaintenance: !!data.bookingAvailabilityState.underMaintenance,
+                    termBreak: !!data.bookingAvailabilityState.termBreak
+                };
+            }
+
+            updateBookingAvailabilityUI();
+            if (callback) {
+                callback(data);
+            }
+        };
+
+        const script = document.createElement('script');
+        script.src = GOOGLE_SCRIPT_URL + "?action=getAdminSettings&callback=" + callbackName + "&t=" + Date.now();
+        script.onerror = function() {
+            delete window[callbackName];
+            if (!silent) {
+                showWarningModal('Could not load admin settings. Please refresh the page if needed.');
+            }
+            if (callback) {
+                callback(null);
+            }
+        };
+        script.onload = function() {
+            document.body.removeChild(script);
+        };
+        document.body.appendChild(script);
+    }
+
     let lastBookingData = {}; // To store the data for the email receipt
     let selectedWasherTime = "Not Selected / Not Rented";
     let selectedDryerTime = "Not Selected / Not Rented";
-    const bookingAvailabilityStorageKey = 'laundryBookingAvailability';
-    let bookingAvailabilityState = { underMaintenance: false, termBreak: false };
     let statusToastTimer = null;
     
     let bookedSlots = [];
@@ -2159,27 +2216,23 @@
     }
 
     function getBookingAvailabilityState() {
-        try {
-            const savedValue = window.localStorage.getItem(bookingAvailabilityStorageKey);
-            if (!savedValue) {
-                return { underMaintenance: false, termBreak: false };
-            }
-            const parsedValue = JSON.parse(savedValue);
-            return {
-                underMaintenance: !!(parsedValue && parsedValue.underMaintenance),
-                termBreak: !!(parsedValue && parsedValue.termBreak)
-            };
-        } catch (err) {
-            return { underMaintenance: false, termBreak: false };
-        }
+        return {
+            underMaintenance: !!(bookingAvailabilityState && bookingAvailabilityState.underMaintenance),
+            termBreak: !!(bookingAvailabilityState && bookingAvailabilityState.termBreak)
+        };
     }
 
     function persistBookingAvailabilityState(nextState) {
-        try {
-            window.localStorage.setItem(bookingAvailabilityStorageKey, JSON.stringify(nextState));
-        } catch (err) {
-            console.warn('Unable to save booking availability state.', err);
-        }
+        bookingAvailabilityState = {
+            underMaintenance: !!(nextState && nextState.underMaintenance),
+            termBreak: !!(nextState && nextState.termBreak)
+        };
+        return saveAdminSettings({ bookingAvailabilityState: bookingAvailabilityState })
+            .then(function(result) {
+                if (!result || result.success === false) {
+                    showWarningModal('Unable to sync booking availability state. Changes are still applied locally in this session.');
+                }
+            });
     }
 
     function getActiveBookingNotice() {
@@ -2385,7 +2438,9 @@
         washerPrice = pricingValues.washer;
         dryerPrice = pricingValues.dryer;
         applyPricingToUI();
-        loadMainPageTitle();
+        loadAdminSettings(function() {
+            applyFiltersAndRender();
+        }, true);
         loadPricesFromServer();
         loadScheduleDataFromServer(true);
         startSeamlessAutoRefresh();
@@ -2961,7 +3016,6 @@
     }
     let refreshTimer = null;
     let adminDataLoadInProgress = false;
-    let adminBookingColumnPreferences = getStoredAdminBookingColumnPreferences();
     let columnPickerDragKey = null;
 
     function getDefaultAdminBookingColumns() {
@@ -2984,35 +3038,14 @@
         ];
     }
 
-    function getStoredAdminBookingColumnPreferences() {
-        try {
-            const storedValue = window.localStorage.getItem('adminBookingColumnPrefs');
-            if (!storedValue) {
-                return getDefaultAdminBookingColumns();
-            }
-            const parsedValue = JSON.parse(storedValue);
-            if (!Array.isArray(parsedValue)) {
-                return getDefaultAdminBookingColumns();
-            }
-            const validKeys = new Set(getAdminBookingColumnConfig().map(function(column) {
-                return column.key;
-            }));
-            const filteredValue = parsedValue.filter(function(key) {
-                return validKeys.has(key);
-            });
-            return filteredValue.length ? filteredValue : getDefaultAdminBookingColumns();
-        } catch (err) {
-            return getDefaultAdminBookingColumns();
-        }
-    }
-
     function saveAdminBookingColumnPreferences(columns) {
         adminBookingColumnPreferences = columns;
-        try {
-            window.localStorage.setItem('adminBookingColumnPrefs', JSON.stringify(columns));
-        } catch (err) {
-            console.warn('Unable to save column preferences.', err);
-        }
+        saveAdminSettings({ columnPreferences: JSON.stringify(columns) })
+            .then(function(result) {
+                if (!result || result.success === false) {
+                    showWarningModal('Unable to sync column preferences. Changes are still applied locally in this session.');
+                }
+            });
     }
 
     function getVisibleAdminBookingColumns() {
@@ -3315,8 +3348,16 @@
         if (!titleInput) return;
         const newTitle = titleInput.value.trim() || 'FTTMa Laundry Booking System';
         setMainPageTitle(newTitle);
+        saveAdminSettings({ title: newTitle }).then(function(result) {
+            if (!result || result.success === false) {
+                showWarningModal('Unable to sync the main page title. The title was updated locally.');
+            } else {
+                showStatusToast('Main page title updated.', 'Updated');
+            }
+        }).catch(function() {
+            showWarningModal('Unable to sync the main page title. The title was updated locally.');
+        });
         closeTitleModal();
-        showStatusToast('Main page title updated.', 'Updated');
     });
 
     document.getElementById('closeTitleModalBtn').addEventListener('click', closeTitleModal);
@@ -3327,21 +3368,12 @@
             titleElement.textContent = titleText;
         }
         document.title = titleText;
-        try {
-            window.localStorage.setItem(ADMIN_TITLE_STORAGE_KEY, titleText);
-        } catch (err) {
-            console.warn('Unable to save main page title.', err);
-        }
+        adminMainPageTitle = titleText;
     }
 
     function loadMainPageTitle() {
-        try {
-            const storedTitle = window.localStorage.getItem(ADMIN_TITLE_STORAGE_KEY);
-            if (storedTitle) {
-                setMainPageTitle(storedTitle);
-            }
-        } catch (err) {
-            console.warn('Unable to load main page title.', err);
+        if (adminMainPageTitle) {
+            setMainPageTitle(adminMainPageTitle);
         }
     }
 
