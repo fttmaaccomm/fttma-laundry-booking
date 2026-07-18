@@ -2145,9 +2145,11 @@
         const callbackName = 'onAdminSettingsLoaded' + Date.now();
         window[callbackName] = function(data) {
             delete window[callbackName];
+            // Update in-memory values. If silent, avoid applying any UI changes
+            // that would be visible to non-admin users (title/overlays). Only
+            // re-render the admin table when the admin panel is open.
             const title = data && typeof data.title === 'string' && data.title.trim() ? data.title.trim() : 'FTTMa Laundry Booking System';
             adminMainPageTitle = title;
-            setMainPageTitle(adminMainPageTitle);
 
             if (Array.isArray(data && data.columnPreferences)) {
                 const validKeys = new Set(getAdminBookingColumnConfig().map(function(column) {
@@ -2168,9 +2170,29 @@
                 };
             }
 
-            updateBookingAvailabilityUI();
-            if (callback) {
-                callback(data);
+            // Apply visible UI updates only when not silent.
+            if (!silent) {
+                setMainPageTitle(adminMainPageTitle);
+                updateBookingAvailabilityUI();
+                if (callback) {
+                    callback(data);
+                }
+            } else {
+                // Silent update: if admin panel is visible, refresh admin table silently
+                const adminPanel = document.getElementById('adminPanel');
+                const isAdminVisible = !!(adminPanel && !adminPanel.classList.contains('hidden'));
+                if (isAdminVisible) {
+                    // Ensure columns/state applied and table refreshed without user-facing notifications
+                    try {
+                        applyFiltersAndRender();
+                    } catch (e) {
+                        // Swallow errors during silent refresh
+                        console.debug('Silent admin settings refresh error', e);
+                    }
+                }
+                if (callback) {
+                    callback(data);
+                }
             }
         };
 
@@ -2409,6 +2431,39 @@
         }, 4000);
     }
 
+    // Background admin sync: keep admin settings and admin table refreshed
+    // without showing visible UI changes to normal users. When the admin
+    // panel is open, silently refresh the admin table.
+    let adminSyncIntervalId = null;
+    function startAdminBackgroundSync(intervalMs = 5000) {
+        if (adminSyncIntervalId) {
+            clearInterval(adminSyncIntervalId);
+        }
+        adminSyncIntervalId = setInterval(function() {
+            try {
+                // Always fetch latest settings silently (no UI side-effects)
+                loadAdminSettings(null, true);
+
+                // If admin panel is visible, refresh admin bookings and slots silently
+                const adminPanel = document.getElementById('adminPanel');
+                const isAdminVisible = !!(adminPanel && !adminPanel.classList.contains('hidden'));
+                if (isAdminVisible) {
+                    loadAdminData(true).catch(() => {});
+                    loadAdminSlots(true).catch(() => {});
+                }
+            } catch (e) {
+                // ignore
+            }
+        }, intervalMs);
+    }
+
+    function stopAdminBackgroundSync() {
+        if (adminSyncIntervalId) {
+            clearInterval(adminSyncIntervalId);
+            adminSyncIntervalId = null;
+        }
+    }
+
     function refreshLivePageData() {
         if (autoRefreshInProgress) {
             return Promise.resolve(false);
@@ -2444,6 +2499,7 @@
         loadPricesFromServer();
         loadScheduleDataFromServer(true);
         startSeamlessAutoRefresh();
+        startAdminBackgroundSync();
 
         document.querySelectorAll('input[name="gender"]').forEach(function(radio) {
             radio.addEventListener('change', function() {
