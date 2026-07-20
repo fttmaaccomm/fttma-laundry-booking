@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- jsPDF Libraries for PDF Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    <title>FTTMa Laundry Booking System</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="container">
+    <h1 class="main-title">FTTMa Laundry Booking System</h1>
+    <!-- Information -->
+    <div id="formScreen">
+        <form id="bookingForm">
+            <div class="form-layout">
+                <!-- Inputs -->
+                <div class="input-stack">
+                <div class="input-column">
+                    <div class="card-header">
+                        <h3 class="card-header-title">Information</h3>
+                    </div>
+                    <div class="form-group">
+                        <p class="group-title">Gender</p>
+                        <div class="radio-tile-group vertical">
+                            <div>
+                                <input type="radio" id="genderBro" name="gender" value="Bro" required>
+                                <label for="genderBro" class="radio-label">Brother</label>
+                            </div>
+                            <div>
+                                <input type="radio" id="genderSis" name="gender" value="Sis">
+                                <label for="genderSis" class="radio-label">Sister</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="name">Name</label>
+                        <input type="text" id="name" required placeholder="e.g. Juan Dela Cruz">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="roomNo">Room Number</label>
+                        <input type="text" id="roomNo" required placeholder="e.g. A301">
+                    </div>
+
+                    <div class="form-group">
+                        <p class="group-title">Service Needed</p>
+                        <div class="radio-tile-group vertical">
+                            <div>
+                                <input type="radio" id="rentWasher" name="rented" value="Washer" required onclick="toggleSchedules()">
+                                <label for="rentWasher" class="radio-label">Washer <span id="washerPriceLabel"></span></label>
+                            </div>
+                            <div>
+                                <input type="radio" id="rentDryer" name="rented" value="Dryer" onclick="toggleSchedules()">
+                                <label for="rentDryer" class="radio-label">Dryer <span id="dryerPriceLabel"></span></label>
+                            </div>
+                            <div>
+                                <input type="radio" id="rentBoth" name="rented" value="Both" onclick="toggleSchedules()">
+                                <label for="rentBoth" class="radio-label">Both <span id="bothPriceLabel"></span></label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-footer-inline form-actions-desktop">
+                    <button type="submit" class="btn-action btn-blue" style="margin-top: 0;"><img src="cart.png" alt="Cart" style="width: 20px; height: 20px;"> Checkout</button>
+                    <button type="button" id="cancelBtn" class="btn-action btn-secondary btn-cancel" style="margin-top: 0;"><img src="cancel.png" alt="Cancel" style="width: 15px; height: 15px;"> Cancel</button>
+                </div>
+                </div>
+                
+
+                <!-- Schedules -->
+                <div class="schedule-column">
+                    <div class="card-header">
+                        <h3 class="card-header-title">Time Slot</h3>
+                    </div>
+                    <div id="washerScheduleSection" class="schedule-section disabled">
+                        <h3>Washer Time Slot</h3>
+                        <div class="table-responsive">
+                            <table id="washerTable">
+                                <thead><tr><th>Date</th><th>Available Time Slots</th></tr></thead>
+                                <tbody><tr><td colspan="2" style="text-align:center;">Loading schedules...</td></tr></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div id="dryerScheduleSection" class="schedule-section disabled">
+                        <h3>Dryer Time Slot</h3>
+                        <div class="table-responsive">
+                            <table id="dryerTable">
+                                <thead><tr><th>Date</th><th>Available Time Slots</th></tr></thead>
+                                <tbody><tr><td colspan="2" style="text-align:center;">Loading schedules...</td></tr></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-footer">
+                <div class="form-actions form-actions-mobile">
+                    <button type="submit" class="btn-action btn-blue" style="margin-top: 0; width: 100%;"><img src="cart.png" alt="Cart" style="width: 20px; height: 20px;"> Checkout</button>
+                    <button type="button" id="cancelBtnMobile" class="btn-action btn-secondary btn-cancel" style="margin-top: 0; width: 100%;"><img src="cancel.png" alt="Cancel" style="width: 15px; height: 15px;"> Cancel</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- REVIEW & PAYMENT SCREEN -->
+    <div id="paymentScreen" class="hidden">
+        <h2>Review & Payment</h2>
+        <p style="text-align: center; color: #7f8c8d;">Please review your information below before finalizing payment.</p>
+        
+        <div class="summary-box">
+            <div class="summary-item"><strong>Gender:</strong> <span id="reviewGender"></span></div>
+            <div class="summary-item"><strong>Name:</strong> <span id="reviewName"></span></div>
+            <div class="summary-item"><strong>Room Number:</strong> <span id="reviewRoom"></span></div>
+            <div class="summary-item"><strong>Service Needed:</strong> <span id="reviewRented"></span></div>
+            <div class="summary-item"><strong>Price:</strong> <span id="reviewPrice"></span></div>
+            <div class="summary-item"><strong>Washer:</strong> <span id="reviewWasherTime"></span></div>
+            <div class="summary-item"><strong>Dryer:</strong> <span id="reviewDryerTime"></span></div>
+        </div>
+
+        <form id="paymentForm">
+            <div class="form-group">
+                <p class="group-title">Select Mode of Payment</p>
+                <div class="radio-tile-group vertical">
+                    <div>
+                        <input type="radio" id="payCash" name="paymentMode" value="Cash" required onclick="togglePaymentFields()">
+                        <label for="payCash" class="radio-label"><img src="PesoCash.png" alt="GCash" style="width: 24px; height: 24px;"> Cash</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="payGcash" name="paymentMode" value="GCash" onclick="togglePaymentFields()">
+                        <label for="payGcash" class="radio-label"><img src="GCashicon.png" alt="GCash" style="width: 24px; height: 24px;"> GCash</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Conditional Field: Cash Section -->
+            <div id="cashFields" class="form-group hidden">
+                <label for="paidToCash">Enter Receipt No.</label>
+                <input type="text" id="paidToCash" placeholder="Strictly follow the Registration department receipt format (e.g. #1-2345)" pattern="#[0-9]-[0-9]{4}" title="Format must be #N-NNNN (e.g., #1-2345)">
+            </div>
+
+            <!-- Conditional Field: GCash Section -->
+            <div id="gcashFields" class="form-group hidden">
+                <div class="qr-container">
+                    <p style="font-weight: bold; color: #2980b9; margin-top:0;">Scan GCash QR Code Below</p>
+                    <img src="GCASH.jpg" alt="GCash QR Code" id="gcashQr" class="qr-image">
+                    <p style="font-size: 12px; color: #7f8c8d; margin-bottom:0;">Please complete the transfer and enter the reference number.</p>
+                </div>
+                <label for="paidToGcash">GCash Reference Code</label>
+                <input type="text" id="paidToGcash" placeholder="e.g. 00123456789">
+            </div>
+
+            <div class="payment-actions">
+                <button type="submit" id="submitBtn" class="btn-action btn-green" disabled>Confirm</button>
+                <button type="button" id="backToFormBtn" class="btn-action btn-secondary">Back & Edit</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- STEP 3: RECEIPT SCREEN (Replaces Success Screen) -->
+    <div id="receiptScreen" class="hidden">
+        <img src="successful.png" alt="Successful" class="receipt-icon">
+        <h2 style="color: var(--success); margin-top: 0;">Booking Confirmed!</h2>
+        <p style="text-align: center; color: #7f8c8d;">Your laundry slot has been successfully reserved. Here is your receipt.</p>
+
+        <div class="summary-box" id="receiptDetails">
+
+        </div>
+
+        <button type="button" onclick="window.location.reload()" class="btn-action btn-blue">Make Another Reservation</button>
+    </div>
+</div>
+
+<div id="loadingOverlay" class="loading-overlay" aria-live="polite" aria-label="Processing">
+    <div class="loading-card">
+        <div class="loading-spinner"></div>
+        <h3 id="loadingTitle" class="warning-title" style="margin-bottom: 8px;">Processing...</h3>
+        <p id="loadingMessage" class="warning-message" style="margin-bottom: 0;">Please wait while the request is being completed.</p>
+    </div>
+</div>
+
+<div id="bookingStatusOverlay" class="booking-status-overlay hidden" aria-live="polite">
+    <div class="booking-status-card">
+        <div class="warning-icon info">🛑</div>
+        <h3 id="bookingStatusTitle">Bookings Paused</h3>
+        <p id="bookingStatusMessage">The booking system is currently unavailable.</p>
+        <p class="booking-status-note">Contact any accommodation coordinator.</p>
+    </div>
+</div>
+
+<div id="statusToast" class="status-toast" role="status" aria-live="polite"></div>
+
+<div id="warningModal" class="warning-modal" role="dialog" aria-modal="true" aria-labelledby="warningTitle">
+    <div class="warning-card">
+        <div id="warningIcon" class="warning-icon warning">!</div>
+        <h3 id="warningTitle" class="warning-title">Warning</h3>
+        <p id="warningMessage" class="warning-message">Please complete the required fields.</p>
+        <button type="button" class="btn-action btn-secondary" onclick="closeWarningModal()">Okay</button>
+    </div>
+</div>
+
+<div id="passwordModal" class="warning-modal" role="dialog" aria-modal="true" aria-labelledby="passwordModalTitle">
+    <div class="warning-card">
+        <div class="warning-icon">🔑</div>
+        <h3 id="passwordModalTitle" class="warning-title">Change Admin Password</h3>
+        <form id="changePasswordForm">
+            <div class="form-group">
+                <label for="currentAdminPass">Current Password</label>
+                <input type="password" id="currentAdminPass" required>
+            </div>
+            <div class="form-group">
+                <label for="newAdminPass">New Password</label>
+                <input type="password" id="newAdminPass" required>
+            </div>
+            <div class="form-group">
+                <label for="confirmAdminPass">Confirm New Password</label>
+                <input type="password" id="confirmAdminPass" required>
+            </div>
+            <button type="submit" class="btn-action btn-green">Update Password</button>
+            <button type="button" class="btn-action btn-secondary" onclick="closePasswordModal()">Cancel</button>
+        </form>
+    </div>
+</div>
+
+<div id="titleModal" class="warning-modal" role="dialog" aria-modal="true" aria-labelledby="titleModalTitle">
+    <div class="warning-card" style="max-width: 460px;">
+        <div class="warning-icon">✏️</div>
+        <h3 id="titleModalTitle" class="warning-title">Edit Main Page Title</h3>
+        <p style="margin: 0 0 12px; color: #475569;">Update the headline shown on the main landing page.</p>
+        <div class="form-group">
+            <label for="mainTitleInput">Main Page Title</label>
+            <input type="text" id="mainTitleInput" placeholder="FTTMa Laundry Booking System">
+        </div>
+        <div class="form-actions" style="justify-content: flex-start; gap: 12px; flex-wrap: wrap;">
+            <button type="button" id="saveTitleBtn" class="btn-action btn-green" style="width: auto; padding: 10px 16px; margin-top: 0;">Save Title</button>
+            <button type="button" id="closeTitleModalBtn" class="btn-action btn-secondary" style="width: auto; padding: 10px 16px; margin-top: 0;">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<div id="slotModal" class="warning-modal" role="dialog" aria-modal="true" aria-labelledby="slotModalTitle">
+    <div class="warning-card" style="max-width: 480px;">
+        <div class="warning-icon">🕒</div>
+        <h3 id="slotModalTitle" class="warning-title">Manage Time Slots</h3>
+        <p style="margin: 0 0 12px; color: #475569;">Choose an existing slot to edit or delete, or add a new one here.</p>
+        <div class="weekend-toggle-row">
+            <span style="color: #475569;">Visible on days:</span>
+            <button type="button" class="weekend-choice-btn" id="mondayBtn">Mon</button>
+            <button type="button" class="weekend-choice-btn" id="tuesdayBtn">Tue</button>
+            <button type="button" class="weekend-choice-btn" id="wednesdayBtn">Wed</button>
+            <button type="button" class="weekend-choice-btn" id="thursdayBtn">Thu</button>
+            <button type="button" class="weekend-choice-btn" id="fridayBtn">Fri</button>
+            <button type="button" class="weekend-choice-btn" id="saturdayBtn">Sat</button>
+            <button type="button" class="weekend-choice-btn" id="sundayBtn">Sun</button>
+        </div>
+        <div class="form-group" style="margin-bottom: 10px;">
+            <label for="slotSelect">Existing Slots</label>
+            <select id="slotSelect" style="width: 100%; padding: 10px; border-radius: 10px; border: 1px solid #cbd5e1;">
+                <option value="">Add a new slot</option>
+            </select>
+        </div>
+        <div class="form-group" style="margin-bottom: 10px; display: none;">
+            <label for="slotDate">Date</label>
+            <input type="date" id="slotDate">
+        </div>
+        <div class="form-group" style="margin-bottom: 10px;">
+            <label for="slotTime">Time</label>
+            <input type="text" id="slotTime" placeholder="e.g. 08:00 AM - 10:00 AM" required>
+        </div>
+
+        <div class="form-actions" style="justify-content: flex-start; gap: 12px; flex-wrap: wrap;">
+            <button type="button" id="saveSlotBtn" class="btn-action btn-blue" style="width: auto; padding: 10px 16px; margin-top: 0;">Add Slot</button>
+            <button type="button" id="updateSlotBtn" class="btn-action btn-green hidden" style="width: auto; padding: 10px 16px; margin-top: 0;">Update Slot</button>
+            <button type="button" id="deleteSlotBtn" class="btn-action btn-danger hidden" style="width: auto; padding: 10px 16px; margin-top: 0;">Delete Slot</button>
+            <button type="button" id="cancelSlotEditBtn" class="btn-action btn-secondary" style="width: auto; padding: 10px 16px; margin-top: 0;">Close</button>
+        </div>
+    </div>
+</div>
+
+<div id="pricingModal" class="warning-modal" role="dialog" aria-modal="true" aria-labelledby="pricingModalTitle">
+    <div class="warning-card" style="max-width: 420px;">
+        <div class="warning-icon">💵</div>
+        <h3 id="pricingModalTitle" class="warning-title">Manage Service Prices</h3>
+        <p style="margin: 0 0 12px; color: #475569;">Set the prices shown to customers for washer, dryer, and both services.</p>
+        <div class="form-group" style="margin-bottom: 10px;">
+            <label for="washerPriceInput">Washer Price</label>
+            <input type="number" id="washerPriceInput" min="0" step="1" value="60">
+        </div>
+        <div class="form-group" style="margin-bottom: 10px;">
+            <label for="dryerPriceInput">Dryer Price</label>
+            <input type="number" id="dryerPriceInput" min="0" step="1" value="60">
+        </div>
+        <div class="form-actions" style="justify-content: flex-start; gap: 12px; flex-wrap: wrap;">
+            <button type="button" id="savePricingBtn" class="btn-action btn-blue" style="width: auto; padding: 10px 16px; margin-top: 0;">Save Pricing</button>
+            <button type="button" id="closePricingModalBtn" class="btn-action btn-secondary" style="width: auto; padding: 10px 16px; margin-top: 0;">Close</button>
+        </div>
+    </div>
+</div>
+
+<div id="columnPickerModal" class="warning-modal" role="dialog" aria-modal="true" aria-labelledby="columnPickerModalTitle">
+    <div class="warning-card column-picker-card">
+        <div class="warning-icon">🗂️</div>
+        <h3 id="columnPickerModalTitle" class="warning-title">Customize Booking Columns</h3>
+        <p class="warning-message" style="margin: 0 0 12px;">Turn columns on or off and drag them to change the order in the admin table.</p>
+        <div class="column-picker-body">
+            <div id="columnPickerOptions" class="column-picker-list"></div>
+            <div class="column-picker-actions">
+                <button type="button" id="saveColumnPrefsBtn" class="btn-action btn-blue" style="width: auto; padding: 10px 16px; margin-top: 0;">Save</button>
+                <button type="button" id="closeColumnPickerBtn" class="btn-action btn-secondary" style="width: auto; padding: 10px 16px; margin-top: 0;">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="availabilityModal" class="warning-modal" role="dialog" aria-modal="true" aria-labelledby="availabilityModalTitle">
+    <div class="warning-card availability-modal-card">
+        <div class="warning-icon">🛡️</div>
+        <h3 id="availabilityModalTitle" class="warning-title">Booking Availability</h3>
+        <p class="warning-message" style="margin: 0 0 12px;">Choose when the booking system should pause for customers while keeping the admin area available.</p>
+        <div class="admin-status-card" style="margin-bottom: 0;">
+            <div class="admin-status-card-head">
+                <div>
+                    <p class="admin-eyebrow">Booking access</p>
+                    <h3>System Availability</h3>
+                </div>
+                <span id="bookingStatusBadge" class="booking-status-badge">Open</span>
+            </div>
+            <div class="admin-status-switch-row">
+                <div>
+                    <strong>Under Maintenance</strong>
+                    <p>Show a maintenance notice and block new bookings.</p>
+                </div>
+                <label class="admin-status-switch" title="Under Maintenance">
+                    <input type="checkbox" id="maintenanceToggle">
+                    <span></span>
+                </label>
+            </div>
+            <div class="admin-status-switch-row">
+                <div>
+                    <strong>Term Break</strong>
+                    <p>Show a term-break notice and stop booking requests.</p>
+                </div>
+                <label class="admin-status-switch" title="Term Break">
+                    <input type="checkbox" id="termBreakToggle">
+                    <span></span>
+                </label>
+            </div>
+        </div>
+        <div class="column-picker-actions" style="margin-top: 16px;">
+            <button type="button" id="closeAvailabilityModalBtn" class="btn-action btn-secondary" style="width: auto; padding: 10px 16px; margin-top: 0;">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- ADMIN ACCESS ICON -->
+<div class="admin-icon admin-access-button" onclick="showAdminLogin()">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 24px; height: 24px;">
+        <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm0 2c-3.33 0-6 1.67-6 4v2h12v-2c0-2.33-2.67-4-6-4Zm8.5-1.5a2.5 2.5 0 1 0-2.5-2.5 2.5 2.5 0 0 0 2.5 2.5Zm0 1.5c-1.24 0-2.5.62-3.43 1.57A4.6 4.6 0 0 0 16 18.5h3.5v-2c0-.67.2-1.3.55-1.83A2.88 2.88 0 0 0 20.5 14Z"/>
+    </svg>
+</div>
+
+<!-- ADMIN LOGIN MODAL -->
+<div id="adminLoginModal" class="modal hidden">
+    <div class="modal-content">
+        <h2>Admin Login</h2>
+        <form id="adminLoginForm">
+            <div class="form-group"><label for="adminUser">Username</label><input type="text" id="adminUser" required></div>
+            <div class="form-group"><label for="adminPass">Password</label><input type="password" id="adminPass" required></div>
+            <button type="submit" id="adminLoginSubmitBtn" class="btn-action btn-blue">Login</button>
+            <button type="button" class="btn-action btn-secondary" onclick="hideAdminLogin()">Cancel</button>
+        </form>
+    </div>
+</div>
+
+<!-- ADMIN PANEL -->
+<div id="adminPanel" class="hidden admin-panel-shell">
+    <div class="admin-panel-card">
+        <div class="admin-header">
+            <div class="admin-header-left">
+                <p class="admin-eyebrow">Dashboard</p>
+                <h2 class="admin-title">Admin Panel</h2>
+            </div>
+            <div class="admin-header-actions" style="width: auto;">
+                <div style="position: relative;">
+                    <button type="button" id="adminSettingsToggle" class="admin-settings-toggle" aria-label="Open admin settings" aria-expanded="false" style="margin-top: 0; width: 46px; height: 44px; min-height: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 14px;">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px; color: #111827; transition: all 0.2s ease;">
+                            <path d="m6 9 6 6 6-6"/>
+                        </svg>
+                    </button>
+                    <div id="adminSettingsMenu" style="display: none; position: absolute; right: 0; top: calc(100% + 8px);">
+                        <button type="button" id="openAvailabilityModalBtn" class="btn-action" style="width: 100%; margin-top: 0; padding: 10px 12px; display: inline-flex; align-items: center; gap: 8px; justify-content: center;">Booking Availability</button>
+                        <button type="button" id="openPasswordModalBtn" class="btn-action" style="width: 100%; margin-top: 8px; padding: 10px 12px; display: inline-flex; align-items: center; gap: 8px; justify-content: center;">Change Password</button>
+                        <button type="button" id="editTitleBtn" class="btn-action" style="width: 100%; margin-top: 8px; padding: 10px 12px; display: inline-flex; align-items: center; gap: 8px; justify-content: center;">Edit Page Title</button>
+                        <button type="button" id="adminLogoutBtn" class="btn-action" style="width: 100%; margin-top: 8px; padding: 10px 12px;">Logout</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="admin-controls">
+            <div class="admin-filter-card">
+                <div class="admin-filter-group" style="display:flex; gap:10px; flex:1; flex-wrap:wrap; align-items:center;">
+                    <input type="date" id="startDate">
+                    <span style="color:#64748b; font-weight:600;">to</span>
+                    <input type="date" id="endDate">
+                    <div style="display:flex; gap:10px; margin-left:8px; align-items:center;">
+                        <button type="button" id="resetBtn" class="btn-action admin-action-btn icon-btn" title="Reset" aria-label="Reset">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;">
+                                <path d="M21 12a9 9 0 1 0-3 6.7L21 12" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="admin-action-card">
+                <div class="admin-action-group" style="display:flex; flex-wrap:nowrap; gap:10px; align-items:center; justify-content:flex-end;">
+                    <button type="button" id="customizeColumnsBtn" class="btn-action admin-action-btn icon-btn" title="Customize Columns" aria-label="Customize Columns">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;">
+                            <rect x="3" y="3" width="8" height="8" />
+                            <rect x="13" y="3" width="8" height="8" />
+                            <rect x="3" y="13" width="8" height="8" />
+                            <rect x="13" y="13" width="8" height="8" />
+                        </svg>
+                    </button>
+
+                    <button type="button" id="downloadPdfBtn" class="btn-action admin-action-btn icon-btn" title="Download PDF" aria-label="Download PDF">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;">
+                            <path d="M12 3v10" />
+                            <path d="M8 9l4 4 4-4" />
+                            <path d="M5 21h14" />
+                        </svg>
+                    </button>
+
+                    <button type="button" id="exportCsvBtn" class="btn-action admin-action-btn icon-btn" title="Download CSV" aria-label="Download CSV">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="width:20px;height:20px;">
+                            <rect x="3" y="4" width="18" height="16" rx="2" ry="2" fill="none" stroke="currentColor" stroke-width="1.8"/>
+                            <text x="12" y="16" font-size="9" font-weight="700" text-anchor="middle" fill="currentColor">CSV</text>
+                        </svg>
+                    </button>
+
+                    <button type="button" id="openSlotModalBtn" class="btn-action admin-action-btn icon-btn" title="Timeslot" aria-label="Timeslot">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;">
+                            <circle cx="12" cy="12" r="8" />
+                            <path d="M12 8v5l3 2" />
+                        </svg>
+                    </button>
+
+                    <button type="button" id="openPricingModalBtn" class="btn-action admin-action-btn icon-btn" title="Pricing" aria-label="Pricing">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="width:20px;height:20px;fill:currentColor;color:inherit;">
+                            <text x="12" y="15" font-size="14" text-anchor="middle" fill="currentColor">₱</text>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="admin-search-row full-width-search-row" style="margin: 12px 0;">
+                <div class="search-field">
+                    <svg class="search-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false" style="display:block;">
+                        <path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"></path>
+                        <circle cx="10.5" cy="10.5" r="5.2" stroke="currentColor" stroke-width="1.8" fill="none"></circle>
+                    </svg>
+                    <input type="text" id="adminSearch" class="admin-header-search" placeholder="Search bookings...">
+                </div>
+            </div>
+        </div>
+
+        <div class="admin-summary-card">
+            <div class="summary-item summary-total"><strong>Total</strong><span id="adminSummaryTotal">0</span></div>
+            <div class="summary-item summary-completed"><strong>Completed</strong><span id="adminSummaryDone">0</span></div>
+            <div class="summary-item summary-pending"><strong>Pending</strong><span id="adminSummaryPending">0</span></div>
+        </div>
+
+        <div class="admin-section-card">
+            <div class="admin-section-head">
+                <h3>Bookings</h3>
+                <span>All reservations</span>
+            </div>
+            <div class="admin-table-container">
+                <table id="adminBookingsTable">
+                    <thead><tr><th>Status</th><th id="timestampHeader" style="cursor: pointer;">Timestamp 🔽</th><th>Name</th><th>Room</th><th>Service</th><th>Washer Slot</th><th>Dryer Slot</th><th>Reference</th></tr></thead>
+                    <tbody><tr><td colspan="8">Loading bookings...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="admin-section-card">
+            <div class="admin-section-head">
+                <h3>Current Available Slots</h3>
+            </div>
+            <div class="admin-table-container" style="max-height: 260px; margin-top: 12px;">
+                <table id="adminSlotsTable">
+                    <thead><tr><th>Date</th><th>Time</th></tr></thead>
+                    <tbody><tr><td colspan="2">Loading slots...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="app.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+    var clear = document.getElementById('clearAdminSearch');
+    var search = document.getElementById('adminSearch');
+    if (clear && search) {
+        clear.addEventListener('click', function(){
+            search.value = '';
+            search.dispatchEvent(new Event('input', { bubbles: true }));
+            search.focus();
+        });
+    }
+    // Add data-label attributes to table cells for mobile card view
+    (function(){
+        var table = document.getElementById('adminBookingsTable');
+        if (!table) return;
+        var headers = Array.from(table.querySelectorAll('thead th')).map(function(th){ return th.textContent.trim(); });
+        var rows = table.querySelectorAll('tbody tr');
+        rows.forEach(function(row){
+            Array.from(row.children).forEach(function(td, i){
+                if (!td) return;
+                td.setAttribute('data-label', headers[i] || '');
+            });
+        });
+    })();
+});
+</script>
+
+</body>
+</html>
