@@ -1067,6 +1067,7 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJxoKe5JFN7K
 
     let adminBookingsData = []; // To store the raw admin data for sorting
     let adminTimeSlotsData = getStoredTimeSlots();
+    let currentAdminSort = { key: 'timestamp', direction: 'desc' };
     let editingSlotId = null;
     let isSavingSlot = false;
     function getSlotDisabledToggleValue() {
@@ -1949,6 +1950,46 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJxoKe5JFN7K
         });
     }
 
+    function getAdminSortIconSvg(direction) {
+        const isAsc = direction === 'asc';
+        const path = isAsc
+            ? 'M3.5 12.5a.5.5 0 0 1-1 0V3.707L1.354 4.854a.5.5 0 1 1-.708-.708l2-1.999.007-.007a.5.5 0 0 1 .7.006l2 2a.5.5 0 1 1-.707.708L3.5 3.707zm3.5-9a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5M7.5 6a.5.5 0 0 0 0 1h5a.5.5 0 0 0 0-1zm0 3a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1zm0 3a.5.5 0 0 0 0 1h1a.5.5 0 0 0 0-1z'
+            : 'M3.5 2.5a.5.5 0 0 0-1 0v8.793l-1.146-1.147a.5.5 0 0 0-.708.708l2 1.999.007.007a.497.497 0 0 0 .7-.006l2-2a.5.5 0 0 0-.707-.708L3.5 11.293zm3.5 1a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5M7.5 6a.5.5 0 0 0 0 1h5a.5.5 0 0 0 0-1zm0 3a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1zm0 3a.5.5 0 0 0 0 1h1a.5.5 0 0 0 0-1z';
+        return `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="admin-sort-icon" viewBox="0 0 16 16"><path d="${path}"/></svg>`;
+    }
+
+    function getAdminSortValue(booking, columnKey) {
+        if (columnKey === 'timestamp') {
+            return booking.timestamp_date instanceof Date ? booking.timestamp_date.getTime() : (Date.parse(booking.timestamp || '') || 0);
+        }
+
+        if (columnKey === 'time_rented_washer' || columnKey === 'time_rented_dryer') {
+            const rawValue = String(booking[columnKey] || '').trim();
+            if (!rawValue || rawValue === '—') {
+                return '';
+            }
+            return rawValue.toLowerCase();
+        }
+
+        return String(booking[columnKey] || '').trim().toLowerCase();
+    }
+
+    function compareAdminBookingValues(a, b, columnKey) {
+        const aValue = getAdminSortValue(a, columnKey);
+        const bValue = getAdminSortValue(b, columnKey);
+
+        if (columnKey === 'timestamp') {
+            if (aValue === bValue) return 0;
+            return aValue > bValue ? 1 : -1;
+        }
+
+        if (!aValue && !bValue) return 0;
+        if (!aValue) return 1;
+        if (!bValue) return -1;
+
+        return aValue.localeCompare(bValue, undefined, { numeric: true, sensitivity: 'base' });
+    }
+
     function renderAdminTable(data) {
         const table = document.getElementById('adminBookingsTable');
         const tbody = table.querySelector('tbody');
@@ -1962,14 +2003,18 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJxoKe5JFN7K
                 return column.key === columnKey;
             }) || { key: columnKey, label: columnKey };
             const headerCell = document.createElement('th');
-            headerCell.textContent = columnConfig.label;
-            if (columnKey === 'timestamp') {
-                headerCell.id = 'timestampHeader';
-                headerCell.style.cursor = 'pointer';
-                headerCell.dataset.column = 'timestamp';
-                headerCell.dataset.sortOrder = table.querySelector('#timestampHeader') ? table.querySelector('#timestampHeader').dataset.sortOrder || 'desc' : 'desc';
-                headerCell.textContent = headerCell.dataset.sortOrder === 'asc' ? 'Timestamp 🔼' : 'Timestamp 🔽';
-            }
+            const isSortable = ['timestamp', 'time_rented_washer', 'time_rented_dryer'].includes(columnKey);
+            const isActive = isSortable && currentAdminSort.key === columnKey;
+            const sortDirection = isActive ? currentAdminSort.direction : 'desc';
+            headerCell.dataset.column = columnKey;
+            headerCell.dataset.sortable = isSortable ? 'true' : 'false';
+            headerCell.classList.toggle('sortable', isSortable);
+            headerCell.style.cursor = isSortable ? 'pointer' : 'default';
+            headerCell.innerHTML = `
+                <span class="admin-header-content">
+                    <span class="admin-header-label">${columnConfig.label}</span>
+                    ${isSortable ? `<span class="admin-sort-icon-wrap${isActive ? ' active' : ''}">${getAdminSortIconSvg(sortDirection)}</span>` : ''}
+                </span>`;
             headerRow.appendChild(headerCell);
         });
         thead.appendChild(headerRow);
@@ -2050,18 +2095,19 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJxoKe5JFN7K
         });
     }
 
-    function sortAndRenderAdminTable(direction) {
-        const header = document.getElementById('timestampHeader');
-        if (header) {
-            header.dataset.sortOrder = direction;
-            header.textContent = direction === 'desc' ? 'Timestamp 🔽' : 'Timestamp 🔼';
+    function sortAndRenderAdminTable(columnKey, direction) {
+        if (!['timestamp', 'time_rented_washer', 'time_rented_dryer'].includes(columnKey)) {
+            columnKey = currentAdminSort.key;
         }
 
-        if (direction === 'desc') {
-            adminBookingsData.sort((a, b) => b.timestamp_date - a.timestamp_date);
-        } else {
-            adminBookingsData.sort((a, b) => a.timestamp_date - b.timestamp_date);
-        }
+        const nextDirection = direction || (currentAdminSort.key === columnKey && currentAdminSort.direction === 'asc' ? 'desc' : 'asc');
+        currentAdminSort = { key: columnKey, direction: nextDirection };
+
+        adminBookingsData.sort((a, b) => {
+            const comparison = compareAdminBookingValues(a, b, columnKey);
+            return currentAdminSort.direction === 'asc' ? comparison : -comparison;
+        });
+
         applyFiltersAndRender();
     }
 
@@ -2101,12 +2147,14 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJxoKe5JFN7K
     }
 
     document.getElementById('adminBookingsTable').addEventListener('click', function(event) {
-        const header = event.target.closest('th[data-column="timestamp"]');
-        if (!header) {
+        const header = event.target.closest('th[data-column]');
+        if (!header || header.dataset.sortable !== 'true') {
             return;
         }
-        const sortOrder = header.dataset.sortOrder || 'desc';
-        sortAndRenderAdminTable(sortOrder === 'desc' ? 'asc' : 'desc');
+        const columnKey = header.dataset.column;
+        const isSameColumn = currentAdminSort.key === columnKey;
+        const nextDirection = isSameColumn && currentAdminSort.direction === 'asc' ? 'desc' : 'asc';
+        sortAndRenderAdminTable(columnKey, nextDirection);
     });
 
     function debounce(fn, delay) {
