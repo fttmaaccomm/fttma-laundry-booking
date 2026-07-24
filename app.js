@@ -504,7 +504,7 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJxoKe5JFN7K
         applyPricingToUI();
         loadAdminSettings(function() {
             applyFiltersAndRender();
-        }, true);
+        }, false);
         loadPricesFromServer();
         loadScheduleDataFromServer(true);
 
