@@ -466,8 +466,9 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJxoKe5JFN7K
         }
         adminSyncIntervalId = setInterval(function() {
             try {
-                // Keep settings refreshed in the background without reloading the bookings table.
-                loadAdminSettings(null, true);
+                // Keep admin settings refreshed in the background for all devices.
+                // Visible availability notices must update even when the page is not reloaded.
+                loadAdminSettings(null, false);
             } catch (e) {
                 // ignore
             }
@@ -505,6 +506,7 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJxoKe5JFN7K
         loadAdminSettings(function() {
             applyFiltersAndRender();
         }, false);
+        startAdminBackgroundSync(5000);
         loadPricesFromServer();
         loadScheduleDataFromServer(true);
 
@@ -2261,7 +2263,7 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJxoKe5JFN7K
         const selectedSlot = (adminTimeSlotsData || []).find(slot => String(slot.id) === String(selectedId));
         if (selectedSlot) {
             startEditSlot(selectedSlot.id, selectedSlot.slot_date, selectedSlot.slot_time, selectedSlot.slot_visible_days, selectedSlot.slot_weekend_type, selectedSlot.status);
-        } 
+        }
     });
     window.startEditSlot = startEditSlot;
     window.deleteSlot = deleteSlot;
