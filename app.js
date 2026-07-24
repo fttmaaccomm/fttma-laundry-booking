@@ -449,11 +449,15 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJxoKe5JFN7K
         });
     }
 
-    function startSeamlessAutoRefresh() {
+    function startSeamlessAutoRefresh(intervalMs = 5000) {
         if (autoRefreshTimer) {
             clearInterval(autoRefreshTimer);
         }
-        autoRefreshTimer = null;
+        autoRefreshTimer = setInterval(function() {
+            refreshLivePageData().catch(function() {
+                // ignore refresh failures and keep polling
+            });
+        }, intervalMs);
     }
 
     // Background admin sync: keep admin settings and admin table refreshed
@@ -466,9 +470,18 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJxoKe5JFN7K
         }
         adminSyncIntervalId = setInterval(function() {
             try {
-                // Keep admin settings refreshed in the background for all devices.
-                // Visible availability notices must update even when the page is not reloaded.
+                // Keep settings refreshed in the background for all devices.
                 loadAdminSettings(null, false);
+
+                // Refresh live schedule data so time slot changes appear without reload.
+                loadScheduleDataFromServer(true, true).catch(function() {
+                    return null;
+                });
+
+                // If the admin panel is open, keep the slot table in sync too.
+                loadAdminSlots(true).catch(function() {
+                    return null;
+                });
             } catch (e) {
                 // ignore
             }
@@ -507,6 +520,7 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJxoKe5JFN7K
             applyFiltersAndRender();
         }, false);
         startAdminBackgroundSync(5000);
+        startSeamlessAutoRefresh(5000);
         loadPricesFromServer();
         loadScheduleDataFromServer(true);
 
