@@ -2261,7 +2261,7 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJxoKe5JFN7K
         const selectedSlot = (adminTimeSlotsData || []).find(slot => String(slot.id) === String(selectedId));
         if (selectedSlot) {
             startEditSlot(selectedSlot.id, selectedSlot.slot_date, selectedSlot.slot_time, selectedSlot.slot_visible_days, selectedSlot.slot_weekend_type, selectedSlot.status);
-        }
+        } 
     });
     window.startEditSlot = startEditSlot;
     window.deleteSlot = deleteSlot;
