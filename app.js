@@ -1,9 +1,9 @@
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby-SWj-kTDYBXcP5wNj3Wkl0E86VuorJBySk2NcNXxO0JDxMCNWpkllfLURzu2khwqYHg/exec";
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyf40LEe5qOdPOzW6145eOmv-PPeWYTvbfwsngg8FenfkR6j-3MdaVWsPPBULEOhaJ_pQ/exec";
     
     const DEFAULT_WASHER_PRICE = 60;
     const DEFAULT_DRYER_PRICE = 60;
     const ADMIN_USERNAME = 'admin';
-    let adminPassword = null;
+    let adminToken = null;
     let washerPrice = DEFAULT_WASHER_PRICE;
     let dryerPrice = DEFAULT_DRYER_PRICE;
     let adminMainPageTitle = 'FTTMa Laundry Booking System';
@@ -71,7 +71,7 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby-SWj-kTDYBX
     }
 
     function persistPrices(prices) {
-        return postToScript({
+        return postToScriptAuthed({
             action: 'savePricing',
             washer: prices.washer,
             dryer: prices.dryer
@@ -143,31 +143,62 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby-SWj-kTDYBX
         return remoteList.map(slot => ({ ...slot }));
     }
 
-    function loadAdminPassword(callback) {
-        if (adminPassword !== null) {
-            callback(adminPassword);
-            return;
+    function adminLogin(username, password) {
+        return postToScript({
+            action: 'adminLogin',
+            username: username,
+            password: password
+        }).then(function(result) {
+            if (result && result.success && result.token) {
+                adminToken = result.token;
+                try {
+                    sessionStorage.setItem('fttmaAdminToken', adminToken);
+                } catch (err) {
+                    // ignore storage errors
+                }
+            }
+            return result;
+        });
+    }
+
+    function getAdminToken() {
+        if (adminToken) return adminToken;
+        try {
+            adminToken = sessionStorage.getItem('fttmaAdminToken');
+        } catch (err) {
+            adminToken = null;
         }
+        return adminToken;
+    }
 
-        window.onAdminPasswordLoaded = function(data) {
-            adminPassword = data && data.password ? data.password : 'password123';
-            callback(adminPassword);
-        };
+    function clearAdminToken() {
+        adminToken = null;
+        try {
+            sessionStorage.removeItem('fttmaAdminToken');
+        } catch (err) {
+            // ignore storage errors
+        }
+    }
 
-        const script = document.createElement('script');
-        script.src = GOOGLE_SCRIPT_URL + "?action=getAdminConfig&callback=onAdminPasswordLoaded&t=" + Date.now();
-        script.onerror = () => {
-            adminPassword = 'password123';
-            callback(adminPassword);
-        };
-        script.onload = () => {
-            document.body.removeChild(script);
-        };
-        document.body.appendChild(script);
+    function adminLogoutOnServer() {
+        var token = getAdminToken();
+        if (!token) return Promise.resolve();
+        return postToScript({ action: 'adminLogout', adminToken: token });
+    }
+
+    // Every privileged call must carry the current session token.
+    function postToScriptAuthed(payload) {
+        return postToScript(Object.assign({}, payload, { adminToken: getAdminToken() })).then(function(result) {
+            if (result && result.authError) {
+                clearAdminToken();
+                performAdminLogout();
+            }
+            return result;
+        });
     }
 
     function saveAdminSettings(payload) {
-        return postToScript(Object.assign({ action: 'saveAdminSettings' }, payload));
+        return postToScriptAuthed(Object.assign({ action: 'saveAdminSettings' }, payload));
     }
 
     function loadAdminSettings(callback, silent = false) {
@@ -552,28 +583,6 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby-SWj-kTDYBX
         return selectedGender ? normalize(selectedGender.value) : '';
     }
 
-    function loadBookingReferences(callback) {
-        if (existingBookingReferences.length > 0) {
-            callback(existingBookingReferences);
-            return;
-        }
-
-        window.onReferenceDataLoaded = function(data) {
-            existingBookingReferences = data || [];
-            callback(existingBookingReferences);
-        };
-
-        const script = document.createElement('script');
-        script.src = GOOGLE_SCRIPT_URL + "?action=getAdminData&callback=onReferenceDataLoaded&t=" + Date.now();
-        script.onerror = () => {
-            callback(null);
-        };
-        script.onload = () => {
-            document.body.removeChild(script);
-        };
-        document.body.appendChild(script);
-    }
-
     function checkReferenceDuplicate(referenceValue, callback) {
         const normalizedReference = normalizeReference(referenceValue);
         if (!normalizedReference) {
@@ -581,18 +590,26 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby-SWj-kTDYBX
             return;
         }
 
-        loadBookingReferences(function(data) {
-            if (!data) {
+        const callbackName = 'onReferenceCheckLoaded' + Date.now();
+        window[callbackName] = function(data) {
+            delete window[callbackName];
+            if (!data || typeof data.exists !== 'boolean') {
                 callback(null);
                 return;
             }
+            callback(data.exists);
+        };
 
-            const isDuplicate = data.some(function(booking) {
-                return normalizeReference(booking.paid_to) === normalizedReference;
-            });
-
-            callback(isDuplicate);
-        });
+        const script = document.createElement('script');
+        script.src = GOOGLE_SCRIPT_URL + "?action=checkReference&reference=" + encodeURIComponent(normalizedReference) + "&callback=" + callbackName + "&t=" + Date.now();
+        script.onerror = () => {
+            delete window[callbackName];
+            callback(null);
+        };
+        script.onload = () => {
+            document.body.removeChild(script);
+        };
+        document.body.appendChild(script);
     }
 
     function getSlotVisibleDays(slot) {
@@ -1290,6 +1307,8 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby-SWj-kTDYBX
     // New function to handle admin logout logic
     function performAdminLogout() {
         clearTimeout(adminInactivityTimer); // Ensure the timer is cleared
+        adminLogoutOnServer().catch(function() { /* best-effort; proceed with local logout regardless */ });
+        clearAdminToken();
         clearAdminReloadState();
         clearAdminLoginState();
         document.getElementById('adminPanel').classList.add('hidden');
@@ -1572,44 +1591,20 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby-SWj-kTDYBX
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<span class="inline-spinner"></span>Signing in...';
 
-        if (user === ADMIN_USERNAME && pass === 'adminconfig') {
-            loadAdminPassword(function(storedPassword) {
-                postToScript({
-                    action: 'changeAdminPassword',
-                    currentPassword: storedPassword,
-                    newPassword: 'password123'
-                }).then(function(result) {
-                    if (result && result.success !== false) {
-                        adminPassword = 'password123';
-                        completeAdminLogin(submitBtn);
-                    } else {
-                        submitBtn.disabled = false;
-                        submitBtn.innerHTML = 'Login';
-                        showWarningModal('Could not reset admin password. Please try again.');
-                    }
-                }).catch(function() {
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = 'Login';
-                    showWarningModal('Could not reset admin password. Please try again.');
-                });
-            });
-            return;
-        }
-
-        loadAdminPassword(function(storedPassword) {
-            try {
-                if (user === ADMIN_USERNAME && pass === storedPassword) {
-                    completeAdminLogin(submitBtn);
-                } else {
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = 'Login';
-                    showWarningModal('Invalid credentials. Please try again.');
-                }
-            } catch (err) {
+        // The password is verified on the server; the client never sees it
+        // and never compares it locally.
+        adminLogin(user, pass).then(function(result) {
+            if (result && result.success && result.token) {
+                completeAdminLogin(submitBtn);
+            } else {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = 'Login';
-                showWarningModal('Could not sign in. Please try again.');
+                showWarningModal('Invalid credentials. Please try again.');
             }
+        }).catch(function() {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = 'Login';
+            showWarningModal('Could not sign in. Please try again.');
         });
     });
 
@@ -1721,37 +1716,29 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby-SWj-kTDYBX
             return;
         }
 
-        loadAdminPassword(function(storedPassword) {
-            if (currentPassword !== storedPassword) {
-                showWarningModal('Current password is incorrect.');
-                return;
-            }
+        if (newPassword.length < 4) {
+            showWarningModal('New password must be at least 4 characters long.');
+            return;
+        }
 
-            if (newPassword.length < 4) {
-                showWarningModal('New password must be at least 4 characters long.');
-                return;
-            }
+        if (newPassword !== confirmPassword) {
+            showWarningModal('New password confirmation does not match.');
+            return;
+        }
 
-            if (newPassword !== confirmPassword) {
-                showWarningModal('New password confirmation does not match.');
-                return;
+        postToScriptAuthed({
+            action: 'changeAdminPassword',
+            currentPassword: currentPassword,
+            newPassword: newPassword
+        }).then(function(result) {
+            if (result && result.success !== false) {
+                closePasswordModal();
+                showWarningModal('Admin password updated successfully.', 'Success');
+            } else {
+                showWarningModal((result && result.error) || 'Current password is incorrect.');
             }
-
-            postToScript({
-                action: 'changeAdminPassword',
-                currentPassword: currentPassword,
-                newPassword: newPassword
-            }).then(function(result) {
-                if (result && result.success !== false) {
-                    adminPassword = newPassword;
-                    closePasswordModal();
-                    showWarningModal('Admin password updated successfully.', 'Success');
-                } else {
-                    throw new Error('Password change failed');
-                }
-            }).catch(() => {
-                showWarningModal('Could not update password. Please try again.');
-            });
+        }).catch(() => {
+            showWarningModal('Could not update password. Please try again.');
         });
     });
 
@@ -1763,6 +1750,12 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby-SWj-kTDYBX
 
         return new Promise(function(resolve) {
             window.onAdminBookingsLoaded = function(data) {
+                if (data && data.authError) {
+                    clearAdminToken();
+                    performAdminLogout();
+                    resolve([]);
+                    return;
+                }
                 adminBookingsData = Array.isArray(data) ? data : [];
                 existingBookingReferences = adminBookingsData;
 
@@ -1776,7 +1769,7 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby-SWj-kTDYBX
             };
 
             const script = document.createElement('script');
-            script.src = GOOGLE_SCRIPT_URL + "?action=getAdminData&callback=onAdminBookingsLoaded&t=" + Date.now();
+            script.src = GOOGLE_SCRIPT_URL + "?action=getAdminData&adminToken=" + encodeURIComponent(getAdminToken() || '') + "&callback=onAdminBookingsLoaded&t=" + Date.now();
             script.onerror = () => {
                 if (!silent) {
                     tbody.innerHTML = '<tr><td colspan="7">Failed to load data.</td></tr>';
@@ -2069,7 +2062,7 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby-SWj-kTDYBX
         refreshSlotUi();
         closeSlotModal();
 
-        postToScript({
+        postToScriptAuthed({
             action: 'manageTimeSlots',
             mode: 'add',
             slotId: newSlotId,
@@ -2125,7 +2118,7 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby-SWj-kTDYBX
         showStatusToast('Future slot updated successfully.', 'Slot Updated');
         closeSlotModal();
 
-        postToScript({
+        postToScriptAuthed({
             action: 'manageTimeSlots',
             mode: 'edit',
             slotId: slotIdForRequest,
@@ -2164,7 +2157,7 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby-SWj-kTDYBX
         refreshSlotUi();
         closeSlotModal();
 
-        postToScript({
+        postToScriptAuthed({
             action: 'manageTimeSlots',
             mode: 'delete',
             slotId: slotIdForRequest
@@ -2241,7 +2234,7 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby-SWj-kTDYBX
     }
 
     function updateBookingDoneStatus(rowNumber, isDone) {
-        return postToScript({
+        return postToScriptAuthed({
             action: 'updateBookingStatus',
             rowNumber: rowNumber,
             done: String(isDone)

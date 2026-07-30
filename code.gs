@@ -107,6 +107,60 @@ function setAdminPassword(newPassword) {
   props.setProperty('adminPassword', String(newPassword));
 }
 
+// ---- Admin session tokens ----
+// A valid login exchanges the password for a short-lived, random token.
+// Every privileged action must then present that token; the password
+// itself never travels back to the client and is never compared there.
+var ADMIN_SESSION_DURATION_MS = 30 * 60 * 1000; // 30 minutes, refreshed on each use
+
+function createAdminSession() {
+  var token = Utilities.getUuid();
+  var props = PropertiesService.getScriptProperties();
+  props.setProperty('session_' + token, String(Date.now() + ADMIN_SESSION_DURATION_MS));
+  return token;
+}
+
+function isValidAdminToken(token) {
+  token = String(token || '').trim();
+  if (!token) {
+    return false;
+  }
+  var props = PropertiesService.getScriptProperties();
+  var key = 'session_' + token;
+  var expiryValue = props.getProperty(key);
+  if (!expiryValue) {
+    return false;
+  }
+  var expiry = Number(expiryValue);
+  if (!expiry || Date.now() > expiry) {
+    props.deleteProperty(key);
+    return false;
+  }
+  // Sliding expiry: any authenticated action extends the session.
+  props.setProperty(key, String(Date.now() + ADMIN_SESSION_DURATION_MS));
+  return true;
+}
+
+function invalidateAdminToken(token) {
+  token = String(token || '').trim();
+  if (!token) {
+    return;
+  }
+  PropertiesService.getScriptProperties().deleteProperty('session_' + token);
+}
+
+function requireAdminAuth(data) {
+  return isValidAdminToken(data && data.adminToken);
+}
+
+function unauthorizedResponse() {
+  return ContentService.createTextOutput(JSON.stringify({
+    success: false,
+    error: 'Unauthorized. Please log in again.',
+    authError: true
+  })).setMimeType(ContentService.MimeType.JSON);
+}
+
 function getServicePrices() {
   var props = PropertiesService.getScriptProperties();
   var saved = props.getProperty('servicePrices');
@@ -390,6 +444,27 @@ function manageTimeSlotsInSheet(actionName, slotData) {
   return { success: false, error: 'Unsupported action' };
 }
 
+function getFullAdminBookingData() {
+  var rows = getBookingDataRows();
+  var headers = ['done', 'gender', 'name', 'room_no', 'time_rented_dryer', 'time_rented_washer', 'rented', 'payment_mode', 'paid_to', 'timestamp', 'transaction_no'];
+
+  return rows.map(function(row, index) {
+    var booking = {};
+    headers.forEach(function(header, headerIndex) {
+      var value = row[headerIndex];
+      if (header === 'timestamp' && value instanceof Date) {
+        booking[header] = value.toLocaleString('en-US', { timeZone: 'Asia/Manila' });
+      } else if (header === 'done') {
+        booking[header] = normalizeBookingDoneValue(value);
+      } else {
+        booking[header] = value;
+      }
+    });
+    booking.sheet_row = index + 2;
+    return booking;
+  });
+}
+
 function createJsonpOutput(callback, data) {
   var payload = JSON.stringify(data);
   var callbackName = String(callback || 'callback').trim();
@@ -405,12 +480,6 @@ function doGet(e) {
 
   var action = String(e.parameter.action || '').toLowerCase();
 
-  if (action === 'getadminconfig') {
-    return createJsonpOutput(e.parameter.callback, {
-      password: getAdminPassword()
-    });
-  }
-
   if (action === 'getadminsettings') {
     return createJsonpOutput(e.parameter.callback, getAdminSettings());
   }
@@ -419,15 +488,24 @@ function doGet(e) {
     return createJsonpOutput(e.parameter.callback, getServicePrices());
   }
 
-  if (action === 'savepricing') {
-    var updatedPrices = setServicePrices({
-      washer: Number(e.parameter.washer || 60),
-      dryer: Number(e.parameter.dryer || 60)
-    });
-    return createJsonpOutput(e.parameter.callback, {
-      success: true,
-      prices: updatedPrices
-    });
+  if (action === 'checkreference') {
+    // Public, read-only, PII-free: only ever returns whether a payment
+    // reference is already in use, never the underlying booking records.
+    var referenceToCheck = normalizeBookingValue(e.parameter.reference);
+    var exists = false;
+    if (referenceToCheck) {
+      exists = getBookingDataRows().some(function(row) {
+        return normalizeBookingValue(row[8]) === referenceToCheck;
+      });
+    }
+    return createJsonpOutput(e.parameter.callback, { exists: exists });
+  }
+
+  if (action === 'getadmindata') {
+    if (!isValidAdminToken(e.parameter.adminToken)) {
+      return createJsonpOutput(e.parameter.callback, { success: false, error: 'Unauthorized', authError: true });
+    }
+    return createJsonpOutput(e.parameter.callback, getFullAdminBookingData());
   }
 
   if (action === 'getscheduledata') {
@@ -450,29 +528,6 @@ function doGet(e) {
     return createJsonpOutput(e.parameter.callback, {
       timeSlots: getManagedTimeSlots()
     });
-  }
-
-  if (action === 'getadmindata') {
-    var rows = getBookingDataRows();
-    var headers = ['done', 'gender', 'name', 'room_no', 'time_rented_dryer', 'time_rented_washer', 'rented', 'payment_mode', 'paid_to', 'timestamp', 'transaction_no'];
-
-    var allBookings = rows.map(function(row, index) {
-      var booking = {};
-      headers.forEach(function(header, headerIndex) {
-        var value = row[headerIndex];
-        if (header === 'timestamp' && value instanceof Date) {
-          booking[header] = value.toLocaleString('en-US', { timeZone: 'Asia/Manila' });
-        } else if (header === 'done') {
-          booking[header] = normalizeBookingDoneValue(value);
-        } else {
-          booking[header] = value;
-        }
-      });
-      booking.sheet_row = index + 2;
-      return booking;
-    });
-
-    return createJsonpOutput(e.parameter.callback, allBookings);
   }
 
   var fallbackRows = getBookingDataRows();
@@ -589,6 +644,23 @@ function doPost(e) {
     var data = getRequestData(e);
     var actionName = String(data.action || '').trim().toLowerCase();
 
+    if (actionName === 'adminlogin') {
+      var loginUsername = String(data.username || '').trim();
+      var loginPassword = String(data.password || '');
+
+      if (loginUsername !== 'admin' || !loginPassword || loginPassword !== getAdminPassword()) {
+        return ContentService.createTextOutput(JSON.stringify({ success: false, error: 'Invalid credentials' })).setMimeType(ContentService.MimeType.JSON);
+      }
+
+      var newToken = createAdminSession();
+      return ContentService.createTextOutput(JSON.stringify({ success: true, token: newToken })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (actionName === 'adminlogout') {
+      invalidateAdminToken(data.adminToken);
+      return ContentService.createTextOutput(JSON.stringify({ success: true })).setMimeType(ContentService.MimeType.JSON);
+    }
+
     if (actionName === 'savebooking') {
       var existingRows = getBookingDataRows();
       var serviceChoice = String(data.rented || '').trim();
@@ -622,6 +694,9 @@ function doPost(e) {
     }
 
     if (actionName === 'savepricing') {
+      if (!requireAdminAuth(data)) {
+        return unauthorizedResponse();
+      }
       var updatedPrices = setServicePrices({
         washer: Number(data.washer || 60),
         dryer: Number(data.dryer || 60)
@@ -630,6 +705,9 @@ function doPost(e) {
     }
 
     if (actionName === 'saveadminsettings') {
+      if (!requireAdminAuth(data)) {
+        return unauthorizedResponse();
+      }
       var updatedSettings = setAdminSettings({
         title: data.title,
         columnPreferences: data.columnPreferences,
@@ -639,6 +717,9 @@ function doPost(e) {
     }
 
     if (actionName === 'updatebookingstatus') {
+      if (!requireAdminAuth(data)) {
+        return unauthorizedResponse();
+      }
       var bookingRowNumber = Number(data.rowNumber || 0);
       if (!bookingRowNumber) {
         return ContentService.createTextOutput(JSON.stringify({ success: false, error: 'Missing booking row number' })).setMimeType(ContentService.MimeType.JSON);
@@ -651,6 +732,9 @@ function doPost(e) {
     }
 
     if (actionName === 'managetimeslots') {
+      if (!requireAdminAuth(data)) {
+        return unauthorizedResponse();
+      }
       var result = manageTimeSlotsInSheet(String(data.mode || '').toLowerCase(), {
         slotId: data.slotId,
         slotDate: data.slotDate,
@@ -661,24 +745,27 @@ function doPost(e) {
     }
 
     if (actionName === 'changeadminpassword') {
+      if (!requireAdminAuth(data)) {
+        return unauthorizedResponse();
+      }
       var currentPassword = String(data.currentPassword || '');
       var newPassword = String(data.newPassword || '');
 
       if (!currentPassword || !newPassword) {
-        return ContentService.createTextOutput('Missing password data').setMimeType(ContentService.MimeType.TEXT);
+        return ContentService.createTextOutput(JSON.stringify({ success: false, error: 'Missing password data' })).setMimeType(ContentService.MimeType.JSON);
       }
 
       if (currentPassword !== getAdminPassword()) {
-        return ContentService.createTextOutput('Current password is invalid').setMimeType(ContentService.MimeType.TEXT);
+        return ContentService.createTextOutput(JSON.stringify({ success: false, error: 'Current password is invalid' })).setMimeType(ContentService.MimeType.JSON);
       }
 
       if (newPassword.length < 4) {
-        return ContentService.createTextOutput('Password too short').setMimeType(ContentService.MimeType.TEXT);
+        return ContentService.createTextOutput(JSON.stringify({ success: false, error: 'Password too short' })).setMimeType(ContentService.MimeType.JSON);
       }
 
       setAdminPassword(newPassword);
       SpreadsheetApp.flush();
-      return ContentService.createTextOutput('Password updated').setMimeType(ContentService.MimeType.TEXT);
+      return ContentService.createTextOutput(JSON.stringify({ success: true, message: 'Password updated' })).setMimeType(ContentService.MimeType.JSON);
     }
 
     var fallbackTransactionNumber = String(data.transaction_no || '').trim();
