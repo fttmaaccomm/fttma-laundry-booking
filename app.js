@@ -614,8 +614,30 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby-SWj-kTDYBX
 
     function getSlotDayLabel(slot) {
         const visibleDays = getSlotVisibleDays(slot);
-        if (!visibleDays.length) return '';
-        const labels = visibleDays.map(day => day.charAt(0).toUpperCase() + day.slice(1));
+        if (!visibleDays.length) {
+            return '';
+        }
+
+        const daySet = new Set(visibleDays);
+        const allWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+        const weekdays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+        const weekdaysAndSat = [...weekdays, 'saturday'];
+
+        if (daySet.size === 7 && allWeek.every(day => daySet.has(day))) {
+            return 'All days';
+        }
+
+        if (daySet.size === 6 && weekdaysAndSat.every(day => daySet.has(day))) {
+            return 'Mon-Sat';
+        }
+
+        if (daySet.size === 5 && weekdays.every(day => daySet.has(day))) {
+            return 'Mon-Fri';
+        }
+
+        const labels = allWeek
+            .filter(day => daySet.has(day))
+            .map(day => day.charAt(0).toUpperCase() + day.slice(1));
         return labels.join(', ');
     }
 

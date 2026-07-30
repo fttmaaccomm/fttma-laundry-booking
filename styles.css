@@ -1763,6 +1763,7 @@
         .admin-slots-list {
             display: grid;
             gap: 12px;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
         }
         .admin-slot-card {
             display: flex;
@@ -1802,7 +1803,8 @@
             color: #1d4ed8;
             font-size: 0.8rem;
             font-weight: 700;
-            white-space: nowrap;
+            white-space: normal;
+            line-height: 1.4;
         }
         .admin-slot-days--all {
             background: linear-gradient(135deg, rgba(249, 115, 22, 0.16), rgba(251, 191, 36, 0.12));
