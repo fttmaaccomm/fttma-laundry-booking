@@ -1,4 +1,4 @@
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJxoKe5JFN7KE5Zq_ZLSPgiq9QEh6SW7AkhjKKAh0TDDS--GZcqSb1lw0qLSb5unQZwA/exec";
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby-SWj-kTDYBXcP5wNj3Wkl0E86VuorJBySk2NcNXxO0JDxMCNWpkllfLURzu2khwqYHg/exec";
     
     const DEFAULT_WASHER_PRICE = 60;
     const DEFAULT_DRYER_PRICE = 60;
@@ -427,8 +427,7 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJxoKe5JFN7K
                 adminTimeSlotsData = mergeTimeSlots(remoteSlots);
 
                 if (refreshMainSchedule) {
-                    buildSchedule('washerTable', 'washerSlot');
-                    buildSchedule('dryerTable', 'dryerSlot');
+                    refreshSlotUi();
                 }
                 resolve(true);
             };
@@ -523,6 +522,7 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJxoKe5JFN7K
         startSeamlessAutoRefresh(5000);
         loadPricesFromServer();
         loadScheduleDataFromServer(true);
+        autoLoginAdminAfterReload();
 
         document.querySelectorAll('input[name="gender"]').forEach(function(radio) {
             radio.addEventListener('change', function() {
@@ -601,6 +601,15 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJxoKe5JFN7K
             return weekendType ? [weekendType] : [];
         }
         return value.split(',').map(day => day.trim().toLowerCase()).filter(Boolean);
+    }
+
+    function escapeHtml(value) {
+        return String(value == null ? '' : value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     }
 
     function getSlotDayLabel(slot) {
@@ -867,18 +876,12 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJxoKe5JFN7K
     }
 
     document.getElementById('cancelBtn').addEventListener('click', function() {
-        document.getElementById('bookingForm').reset();
-        resetSelectionsAndButtons();
-        document.getElementById('washerScheduleSection').classList.add('disabled');
-        document.getElementById('dryerScheduleSection').classList.add('disabled');
+        resetBookingFlow(false);
     });
 
     // Add listener for the new mobile cancel button
     document.getElementById('cancelBtnMobile').addEventListener('click', function() {
-        document.getElementById('bookingForm').reset();
-        resetSelectionsAndButtons();
-        document.getElementById('washerScheduleSection').classList.add('disabled');
-        document.getElementById('dryerScheduleSection').classList.add('disabled');
+        resetBookingFlow(false);
     });
 
     document.getElementById('savePricingBtn').addEventListener('click', function() {
@@ -960,9 +963,86 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJxoKe5JFN7K
     // Add event listener to the payment form to enable/disable the confirm button
     document.getElementById('paymentForm').addEventListener('input', validatePaymentForm);
 
+    function resetBookingFlow(preserveFormValues = false) {
+        closeWarningModal();
+
+        const formScreen = document.getElementById('formScreen');
+        const paymentScreen = document.getElementById('paymentScreen');
+        const receiptScreen = document.getElementById('receiptScreen');
+        const bookingForm = document.getElementById('bookingForm');
+        const paymentForm = document.getElementById('paymentForm');
+        const confirmBtn = document.getElementById('submitBtn');
+
+        if (!preserveFormValues && bookingForm) {
+            bookingForm.reset();
+        }
+
+        if (paymentForm) {
+            paymentForm.reset();
+        }
+
+        resetSelectionsAndButtons();
+
+        const washerSection = document.getElementById('washerScheduleSection');
+        const dryerSection = document.getElementById('dryerScheduleSection');
+        if (washerSection) {
+            washerSection.classList.add('disabled');
+        }
+        if (dryerSection) {
+            dryerSection.classList.add('disabled');
+        }
+
+        if (formScreen) {
+            formScreen.classList.remove('hidden');
+        }
+        if (paymentScreen) {
+            paymentScreen.classList.add('hidden');
+        }
+        if (receiptScreen) {
+            receiptScreen.classList.add('hidden');
+        }
+
+        ['reviewGender', 'reviewName', 'reviewRoom', 'reviewRented', 'reviewPrice', 'reviewWasherTime', 'reviewDryerTime'].forEach(function(id) {
+            const reviewEl = document.getElementById(id);
+            if (reviewEl) {
+                reviewEl.textContent = '';
+            }
+        });
+
+        const cashFields = document.getElementById('cashFields');
+        const gcashFields = document.getElementById('gcashFields');
+        const cashInput = document.getElementById('paidToCash');
+        const gcashInput = document.getElementById('paidToGcash');
+        if (cashFields) {
+            cashFields.classList.add('hidden');
+        }
+        if (gcashFields) {
+            gcashFields.classList.add('hidden');
+        }
+        if (cashInput) {
+            cashInput.value = '';
+            cashInput.required = false;
+        }
+        if (gcashInput) {
+            gcashInput.value = '';
+            gcashInput.required = false;
+        }
+
+        if (confirmBtn) {
+            confirmBtn.disabled = true;
+            confirmBtn.innerText = 'Confirm';
+        }
+
+        lastBookingData = {};
+        if (typeof buildSchedule === 'function') {
+            buildSchedule('washerTable', 'washerSlot');
+            buildSchedule('dryerTable', 'dryerSlot');
+        }
+        validatePaymentForm();
+    }
+
     document.getElementById('backToFormBtn').addEventListener('click', function() {
-        document.getElementById('paymentScreen').classList.add('hidden');
-        document.getElementById('formScreen').classList.remove('hidden');
+        resetBookingFlow(true);
     });
 
     document.getElementById('paymentForm').addEventListener('submit', function(e) {
@@ -1047,6 +1127,7 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJxoKe5JFN7K
                     populateReceipt();
                     document.getElementById('paymentScreen').classList.add('hidden');
                     document.getElementById('receiptScreen').classList.remove('hidden');
+                    updateReceiptActionButtons();
                 } else {
                     throw new Error(result && result.error ? result.error : 'Booking save failed');
                 }
@@ -1077,7 +1158,48 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJxoKe5JFN7K
             <div class="summary-item"><strong>Payment Mode:</strong> <span>${lastBookingData.payment_mode}</span></div>
             <div class="summary-item"><strong>Reference/Receipt No:</strong> <span>${lastBookingData.paid_to}</span></div>
         `;
+        updateReceiptActionButtons();
     }
+
+    function captureReceiptImage() {
+        const receiptBox = document.getElementById('receiptDetails');
+        return html2canvas(receiptBox, { backgroundColor: '#ffffff', scale: Math.min(window.devicePixelRatio || 2, 2) })
+            .then(canvas => new Promise(resolve => canvas.toBlob(resolve, 'image/png')))
+            .then(blob => {
+                if (!blob) {
+                    throw new Error('Unable to generate receipt image.');
+                }
+                return blob;
+            });
+    }
+
+    function downloadReceiptImage() {
+        showLoading('Preparing receipt image...');
+        captureReceiptImage().then(function(blob) {
+            const url = URL.createObjectURL(blob);
+            const anchor = document.createElement('a');
+            anchor.href = url;
+            anchor.download = 'FTTMa-Receipt.png';
+            document.body.appendChild(anchor);
+            anchor.click();
+            document.body.removeChild(anchor);
+            URL.revokeObjectURL(url);
+        }).catch(function(err) {
+            showWarningModal('Could not generate receipt image. Please try again.');
+            console.error(err);
+        }).finally(function() {
+            hideLoading();
+        });
+    }
+
+    function updateReceiptActionButtons() {
+        const downloadButton = document.getElementById('downloadReceiptBtn');
+        if (downloadButton) {
+            downloadButton.classList.remove('hidden');
+        }
+    }
+
+    document.getElementById('downloadReceiptBtn').addEventListener('click', downloadReceiptImage);
 
     // --- ADMIN PANEL SCRIPT ---
 
@@ -1086,6 +1208,61 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJxoKe5JFN7K
     let currentAdminSort = { key: 'timestamp', direction: 'desc' };
     let editingSlotId = null;
     let isSavingSlot = false;
+
+    function persistAdminReloadState() {
+        try {
+            sessionStorage.setItem('fttmaAdminReload', '1');
+        } catch (err) {
+            // ignore storage errors
+        }
+    }
+
+    function clearAdminReloadState() {
+        try {
+            sessionStorage.removeItem('fttmaAdminReload');
+        } catch (err) {
+            // ignore storage errors
+        }
+    }
+
+    function shouldAutoOpenAdminPanel() {
+        try {
+            return sessionStorage.getItem('fttmaAdminReload') === '1';
+        } catch (err) {
+            return false;
+        }
+    }
+
+    function persistAdminLoginState() {
+        sessionStorage.setItem('fttmaAdminLoggedIn', '1');
+    }
+
+    function clearAdminLoginState() {
+        sessionStorage.removeItem('fttmaAdminLoggedIn');
+    }
+
+    function reloadAdminPanelAfterSlotAction() {
+        showLoading('Refreshing the admin panel...');
+        persistAdminReloadState();
+        setTimeout(function() {
+            window.location.reload();
+        }, 700); // A short delay to allow the user to see the toast message
+    }
+
+    function autoLoginAdminAfterReload() {
+        if (sessionStorage.getItem('fttmaAdminLoggedIn') !== '1') {
+            return;
+        }
+
+        // If logged in state is persisted, just show the admin panel
+        hideAdminLogin();
+        document.querySelector('.admin-icon').classList.add('hidden');
+        document.querySelector('.container').classList.add('hidden');
+        document.getElementById('adminPanel').classList.remove('hidden');
+        updateBookingAvailabilityUI();
+        refreshAdminData();
+    }
+
     function getSlotDisabledToggleValue() {
         const toggle = document.getElementById('slotDisabledToggle');
         return !!(toggle && toggle.checked);
@@ -1288,12 +1465,20 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJxoKe5JFN7K
         refreshTimer = null;
     }
 
-    function showAdminLogin() { document.getElementById('adminLoginModal').classList.remove('hidden'); }
-    function hideAdminLogin() { document.getElementById('adminLoginModal').classList.add('hidden'); }
+    function showAdminLogin() {
+        document.getElementById('adminLoginModal').classList.remove('hidden'); 
+        document.querySelector('.admin-icon').classList.add('hidden'); 
+    }
+
+    function hideAdminLogin() {
+        document.getElementById('adminLoginModal').classList.add('hidden'); 
+        document.querySelector('.admin-icon').classList.remove('hidden'); 
+    }
 
     function completeAdminLogin(submitBtn) {
+        clearAdminReloadState();
+        persistAdminLoginState();
         hideAdminLogin();
-        document.querySelector('.admin-icon').classList.add('hidden');
         document.querySelector('.container').classList.add('hidden');
         document.getElementById('adminPanel').classList.remove('hidden');
         updateBookingAvailabilityUI();
@@ -1302,6 +1487,21 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJxoKe5JFN7K
             submitBtn.innerHTML = 'Login';
         });
     }
+
+    document.getElementById('toggleAdminPassVisibility').addEventListener('click', function() {
+        const passInput = document.getElementById('adminPass');
+        const eyeIcon = document.getElementById('eyeIcon');
+        const eyeOffIcon = document.getElementById('eyeOffIcon');
+        const isPassword = passInput.type === 'password';
+    
+        passInput.type = isPassword ? 'text' : 'password';
+        eyeIcon.classList.toggle('hidden', isPassword);
+        eyeOffIcon.classList.toggle('hidden', !isPassword);
+    
+        if (isPassword) {
+            passInput.focus();
+        }
+    });
 
     document.getElementById('adminLoginForm').addEventListener('submit', function(e) {
         e.preventDefault();
@@ -1529,18 +1729,18 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJxoKe5JFN7K
     }
 
     function loadAdminSlots(silent = false) {
-        const tbody = document.getElementById('adminSlotsTable').querySelector('tbody');
-        if (!tbody.dataset.initialized) {
-            tbody.innerHTML = '<tr><td colspan="3">Loading slots...</td></tr>';
+        const container = document.getElementById('adminSlotsTable');
+        if (!container) return Promise.resolve([]);
+        if (!container.dataset.initialized) {
+            container.innerHTML = '<div class="admin-slots-empty">Loading slots...</div>';
         }
 
         return new Promise(function(resolve) {
             window.onAdminSlotsLoaded = function(data) {
                 const remoteSlots = (data && data.timeSlots) ? data.timeSlots : [];
                 adminTimeSlotsData = mergeTimeSlots(remoteSlots);
-                tbody.dataset.initialized = 'true';
-                renderAdminSlots();
-                populateSlotSelect();
+                container.dataset.initialized = 'true';
+                refreshSlotUi();
                 resolve(adminTimeSlotsData);
             };
 
@@ -1548,7 +1748,7 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJxoKe5JFN7K
             script.src = GOOGLE_SCRIPT_URL + "?action=getTimeSlots&callback=onAdminSlotsLoaded&t=" + Date.now();
             script.onerror = () => {
                 if (!silent) {
-                    tbody.innerHTML = '<tr><td colspan="3">Failed to load slots.</td></tr>';
+                    container.innerHTML = '<div class="admin-slots-empty">Failed to load slots.</div>';
                 }
                 resolve([]);
             };
@@ -1570,7 +1770,7 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJxoKe5JFN7K
         if (!slot) return false;
         const visibleDays = getSlotVisibleDays(slot);
         if (visibleDays.length) return true;
-        if (!slot.slot_date) return false;
+        if (!slot.slot_date) return true;
         const slotDate = new Date(normalizeSlotDateValue(slot.slot_date) + 'T00:00:00');
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -1586,8 +1786,15 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJxoKe5JFN7K
     }
 
     function getSelectedVisibleDays() {
-        const dayButtons = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-        return dayButtons.filter(day => document.getElementById(day + 'Btn').classList.contains('active'));
+        const allDaysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+        const allDaysBtn = document.getElementById('allDaysBtn');
+
+        if (allDaysBtn && allDaysBtn.classList.contains('active')) {
+            return allDaysOfWeek; // If "All Days" is active, return all days explicitly
+        } else {
+            // Otherwise, return the explicitly selected individual days
+            return allDaysOfWeek.filter(day => document.getElementById(day + 'Btn').classList.contains('active'));
+        }
     }
 
     function getUpcomingWeekdayDate(dayName) {
@@ -1611,19 +1818,24 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJxoKe5JFN7K
     function setVisibleDaysSelection(valueList) {
         const dayButtons = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
         dayButtons.forEach(day => document.getElementById(day + 'Btn').classList.toggle('active', valueList.includes(day)));
-
+    
+        const allDaysBtn = document.getElementById('allDaysBtn');
         const slotDateInput = document.getElementById('slotDate');
         const slotSelect = document.getElementById('slotSelect');
-        if (valueList.length > 0) {
+    
+        const allDaysActive = valueList.length === dayButtons.length;
+        const specificDaysActive = valueList.length > 0 && !allDaysActive;
+    
+        if (allDaysBtn) {
+            allDaysBtn.classList.toggle('active', allDaysActive);
+        }
+    
+        const disableDateInput = allDaysActive || specificDaysActive;
+        slotDateInput.disabled = disableDateInput;
+        slotSelect.disabled = disableDateInput;
+    
+        if (disableDateInput) {
             slotDateInput.value = '';
-            slotDateInput.disabled = true;
-            slotSelect.disabled = true;
-        } else {
-            slotDateInput.disabled = false;
-            slotSelect.disabled = false;
-            if (!slotDateInput.value) {
-                slotDateInput.value = '';
-            }
         }
     }
 
@@ -1636,24 +1848,40 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJxoKe5JFN7K
         return selectedDays.some(day => visibleDays.includes(day));
     }
 
+    function refreshSlotUi() {
+        renderAdminSlots();
+        populateSlotSelect();
+        refreshBookingSchedule();
+    }
+
     function renderAdminSlots() {
-        const tbody = document.getElementById('adminSlotsTable').querySelector('tbody');
+        const container = document.getElementById('adminSlotsTable');
+        if (!container) return;
+
         const visibleSlots = (adminTimeSlotsData || []).filter(isVisibleSlot);
-        tbody.innerHTML = '';
+        container.innerHTML = '';
         if (!visibleSlots.length) {
-            tbody.innerHTML = '<tr><td colspan="2">No available slots configured.</td></tr>';
+            container.innerHTML = '<div class="admin-slots-empty">No available slots configured.</div>';
             return;
         }
 
-        visibleSlots.forEach(slot => {
-            const row = tbody.insertRow();
+        container.innerHTML = visibleSlots.map(function(slot) {
             const dayLabel = getSlotDayLabel(slot);
-            const dateCellValue = slot.slot_date ? slot.slot_date : (dayLabel ? 'Recurring' : '—');
-            row.innerHTML = `
-                <td>${dateCellValue}</td>
-                <td>${slot.slot_time || '—'}${dayLabel ? `<div style="font-size:12px;color:#64748b;">${dayLabel}</div>` : ''}</td>
+            const timeValue = slot.slot_time || '—';
+            const dayBadge = dayLabel
+                ? `<span class="admin-slot-days">${escapeHtml(dayLabel)}</span>`
+                : '<span class="admin-slot-days admin-slot-days--all">All days</span>';
+
+            return `
+                <div class="admin-slot-card">
+                    <div class="admin-slot-time">${escapeHtml(timeValue)}</div>
+                    <div class="admin-slot-meta">
+                        <span class="admin-slot-label">Visible on</span>
+                        ${dayBadge}
+                    </div>
+                </div>
             `;
-        });
+        }).join('');
     }
 
     function populateSlotSelect() {
@@ -1681,12 +1909,18 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJxoKe5JFN7K
         });
     }
 
-    function openSlotModal() {
-        populateSlotSelect();
-        document.getElementById('slotModal').classList.add('show');
-        document.getElementById('slotDate').value = '';
-        document.getElementById('slotTime').value = '';
-        document.getElementById('slotSelect').value = '';
+    function resetSlotFormState() {
+        const slotDateInput = document.getElementById('slotDate');
+        const slotTimeInput = document.getElementById('slotTime');
+        const slotSelect = document.getElementById('slotSelect');
+
+        if (slotDateInput) slotDateInput.value = '';
+        if (slotTimeInput) slotTimeInput.value = '';
+        if (slotSelect) slotSelect.value = '';
+
+        const allDaysBtn = document.getElementById('allDaysBtn');
+        if (allDaysBtn) allDaysBtn.classList.remove('active'); // Ensure "All Days" is inactive
+
         setVisibleDaysSelection([]);
         document.getElementById('saveSlotBtn').classList.remove('hidden');
         document.getElementById('updateSlotBtn').classList.add('hidden');
@@ -1695,17 +1929,15 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJxoKe5JFN7K
         setSlotDisabledToggleValue(false);
     }
 
+    function openSlotModal() {
+        populateSlotSelect();
+        resetSlotFormState();
+        document.getElementById('slotModal').classList.add('show');
+    }
+
     function closeSlotModal() {
+        resetSlotFormState();
         document.getElementById('slotModal').classList.remove('show');
-        document.getElementById('slotDate').value = '';
-        document.getElementById('slotTime').value = '';
-        document.getElementById('slotSelect').value = '';
-        setVisibleDaysSelection([]);
-        document.getElementById('saveSlotBtn').classList.remove('hidden');
-        document.getElementById('updateSlotBtn').classList.add('hidden');
-        document.getElementById('deleteSlotBtn').classList.add('hidden');
-        editingSlotId = null;
-        setSlotDisabledToggleValue(false);
     }
 
     function startEditSlot(id, slotDate, slotTime, slotVisibleDaysValue, slotWeekendType, slotStatus) {
@@ -1720,34 +1952,49 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJxoKe5JFN7K
         setSlotDisabledToggleValue(String(slotStatus || '').toLowerCase() === 'inactive');
 
         const visibleDays = getSlotVisibleDays({ slot_visible_days: slotVisibleDaysValue || slotWeekendType || '' });
-        if (visibleDays.length) {
-            setVisibleDaysSelection(visibleDays);
-            document.getElementById('slotDate').value = '';
-        } else {
-            setVisibleDaysSelection([]);
-            document.getElementById('slotDate').value = slotDate || '';
+        const allDaysBtn = document.getElementById('allDaysBtn');
+        const slotDateInput = document.getElementById('slotDate');
+        const slotSelect = document.getElementById('slotSelect');
+        const allDaysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+
+        if (visibleDays.length === allDaysOfWeek.length) { // If all days are selected
+            setVisibleDaysSelection(allDaysOfWeek); // Activate all individual day buttons
+            if (allDaysBtn) allDaysBtn.classList.add('active'); // Activate "All Days" button
+            slotDateInput.value = '';
+            slotDateInput.disabled = true;
+            slotSelect.disabled = true;
+        } else if (visibleDays.length > 0) { // If some specific days are selected
+            setVisibleDaysSelection(visibleDays); // Activate specific day buttons
+            if (allDaysBtn) allDaysBtn.classList.remove('active'); // Deactivate "All Days" button
+            slotDateInput.value = '';
+            slotDateInput.disabled = true;
+            slotSelect.disabled = true;
+        } else { // No specific days selected, it's a date-specific slot
+            setVisibleDaysSelection([]); // Deactivate all individual day buttons
+            if (allDaysBtn) allDaysBtn.classList.remove('active'); // Deactivate "All Days" button
+            slotDateInput.value = slotDate || '';
+            slotDateInput.disabled = false;
+            slotSelect.disabled = false;
         }
+
     }
 
     function saveTimeSlot() {
         if (isSavingSlot) return;
         const slotDateInput = document.getElementById('slotDate');
         const slotTime = document.getElementById('slotTime').value;
-        const visibleDays = getSelectedVisibleDays();
-        const slotDate = slotDateInput.value || '';
+        const visibleDays = getSelectedVisibleDays(); // This will now correctly return all days if "All Days" is active
+        // If visibleDays has content, slotDate should be empty. Otherwise, use slotDateInput.value.
+        const slotDate = visibleDays.length > 0 ? '' : slotDateInput.value;
+
         if (!slotTime) {
-            showWarningModal('Please fill in the slot time.');
-            return;
-        }
-        if (!visibleDays.length && !slotDate) {
-            showWarningModal('Please choose a date or at least one day.');
+            showStatusToast('Please fill in the slot time.', 'Slot Notice');
             return;
         }
 
         isSavingSlot = true;
         setSlotActionBusy(true);
         slotDateInput.value = slotDate;
-
         const newSlotId = String(Date.now());
         const isDisabled = getSlotDisabledToggleValue();
         const newSlot = {
@@ -1759,9 +2006,8 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJxoKe5JFN7K
             status: isDisabled ? 'inactive' : 'active'
         };
         adminTimeSlotsData = [...adminTimeSlotsData, newSlot];
-        renderAdminSlots();
-        populateSlotSelect();
-        refreshBookingSchedule();
+        refreshSlotUi();
+        closeSlotModal();
 
         postToScript({
             action: 'manageTimeSlots',
@@ -1773,18 +2019,18 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJxoKe5JFN7K
             slotDisabled: getSlotDisabledToggleValue()
         }).then(function(result) {
             if (result && result.success !== false) {
-                closeSlotModal();
                 return Promise.all([
                     loadAdminSlots(),
                     loadScheduleDataFromServer(true)
                 ]).then(function() {
-                    showWarningModal('Future slot added successfully.', 'Success');
+                    showStatusToast('Future slot added successfully.', 'Slot Added');
+                    reloadAdminPanelAfterSlotAction();
                 });
             }
-            throw new Error('Slot add failed');
+            reloadAdminPanelAfterSlotAction();
         }).catch(() => {
-            closeSlotModal();
-            showWarningModal('Slot saved locally, but the sync to Apps Script did not complete.');
+            showStatusToast('Slot saved locally, but the sync to Apps Script did not complete.', 'Slot Notice');
+            reloadAdminPanelAfterSlotAction();
         }).finally(() => {
             isSavingSlot = false;
             setSlotActionBusy(false);
@@ -1795,14 +2041,11 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJxoKe5JFN7K
         if (!editingSlotId || isSavingSlot) return;
         const slotDateInput = document.getElementById('slotDate');
         const slotTime = document.getElementById('slotTime').value;
-        const visibleDays = getSelectedVisibleDays();
-        const slotDate = slotDateInput.value || '';
+        const visibleDays = getSelectedVisibleDays(); // This will now correctly return all days if "All Days" is active
+        // If visibleDays has content, slotDate should be empty. Otherwise, use slotDateInput.value.
+        const slotDate = visibleDays.length > 0 ? '' : slotDateInput.value;
         if (!slotTime) {
-            showWarningModal('Please fill in the slot time.');
-            return;
-        }
-        if (!visibleDays.length && !slotDate) {
-            showWarningModal('Please choose a date or at least one day.');
+            showStatusToast('Please fill in the slot time.', 'Slot Notice');
             return;
         }
 
@@ -1811,38 +2054,39 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJxoKe5JFN7K
         slotDateInput.value = slotDate;
 
         const isDisabled = getSlotDisabledToggleValue();
+        const slotIdForRequest = editingSlotId;
         adminTimeSlotsData = adminTimeSlotsData.map(slot => {
-            if (String(slot.id) === String(editingSlotId)) {
+            if (String(slot.id) === String(slotIdForRequest)) {
                 return { ...slot, slot_date: slotDate, slot_time: slotTime, slot_visible_days: visibleDays.join(','), slot_weekend_type: '', status: isDisabled ? 'inactive' : 'active' };
             }
             return slot;
         });
-        renderAdminSlots();
-        populateSlotSelect();
-        refreshBookingSchedule();
+        refreshSlotUi();
+        showStatusToast('Future slot updated successfully.', 'Slot Updated');
+        closeSlotModal();
 
         postToScript({
             action: 'manageTimeSlots',
             mode: 'edit',
-            slotId: editingSlotId,
+            slotId: slotIdForRequest,
             slotDate: slotDate,
             slotTime: slotTime,
             slotVisibleDays: visibleDays.join(','),
             slotDisabled: getSlotDisabledToggleValue()
         }).then(function(result) {
             if (result && result.success !== false) {
-                closeSlotModal();
                 return Promise.all([
                     loadAdminSlots(),
                     loadScheduleDataFromServer(true)
                 ]).then(function() {
-                    showWarningModal('Future slot updated successfully.', 'Success');
+                    showStatusToast('Future slot updated successfully.', 'Slot Updated');
+                    reloadAdminPanelAfterSlotAction();
                 });
             }
-            throw new Error('Slot edit failed');
+            reloadAdminPanelAfterSlotAction();
         }).catch(() => {
-            closeSlotModal();
-            showWarningModal('Slot updated locally, but the sync to Apps Script did not complete.');
+            showStatusToast('Slot updated locally, but the sync to Apps Script did not complete.', 'Slot Notice');
+            reloadAdminPanelAfterSlotAction();
         }).finally(() => {
             isSavingSlot = false;
             setSlotActionBusy(false);
@@ -1855,37 +2099,31 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJxoKe5JFN7K
         setSlotActionBusy(true);
 
         const previousSlots = adminTimeSlotsData;
-        adminTimeSlotsData = adminTimeSlotsData.filter(slot => String(slot.id) !== String(slotId));
-        renderAdminSlots();
-        populateSlotSelect();
-        refreshBookingSchedule();
+        const slotIdForRequest = slotId;
+        adminTimeSlotsData = adminTimeSlotsData.filter(slot => String(slot.id) !== String(slotIdForRequest));
+        refreshSlotUi();
+        closeSlotModal();
 
         postToScript({
             action: 'manageTimeSlots',
             mode: 'delete',
-            slotId: slotId
+            slotId: slotIdForRequest
         }).then(function(result) {
             if (result && result.success !== false) {
-                closeSlotModal();
                 return Promise.all([
                     loadAdminSlots(),
                     loadScheduleDataFromServer(true)
                 ]).then(function() {
-                    showWarningModal('Future slot deleted successfully.', 'Success');
+                    showStatusToast('Future slot deleted successfully.', 'Slot Deleted');
+                    reloadAdminPanelAfterSlotAction();
                 });
             }
             adminTimeSlotsData = previousSlots;
-            renderAdminSlots();
-            populateSlotSelect();
-            refreshBookingSchedule();
-            throw new Error('Slot delete failed');
+            reloadAdminPanelAfterSlotAction();
         }).catch(() => {
             adminTimeSlotsData = previousSlots;
-            renderAdminSlots();
-            populateSlotSelect();
-            refreshBookingSchedule();
-            closeSlotModal();
-            showWarningModal('Slot could not be deleted. Please try again.');
+            showStatusToast('Slot could not be deleted. Please try again.', 'Slot Notice');
+            reloadAdminPanelAfterSlotAction();
         }).finally(function() {
             isSavingSlot = false;
             setSlotActionBusy(false);
@@ -2250,12 +2488,37 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJxoKe5JFN7K
             deleteSlot(editingSlotId);
         }
     });
+
+    document.getElementById('allDaysBtn').addEventListener('click', function() {
+        const allDaysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+        const isCurrentlyActive = this.classList.contains('active');
+    
+        if (isCurrentlyActive) {
+            // If "All Days" is active, deactivate it by clearing all selections.
+            setVisibleDaysSelection([]);
+        } else {
+            // If "All Days" is not active, activate it by selecting all days.
+            setVisibleDaysSelection(allDaysOfWeek);
+        }
+    
+        renderAdminSlots();
+        populateSlotSelect();
+    });
+
     ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].forEach(day => {
         document.getElementById(day + 'Btn').addEventListener('click', function() {
-            const selectedDays = getSelectedVisibleDays();
-            const nextDays = selectedDays.includes(day)
-                ? selectedDays.filter(item => item !== day)
-                : [...selectedDays, day];
+            const dayButtons = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+            const currentSelectedDays = dayButtons.filter(d => document.getElementById(d + 'Btn').classList.contains('active'));
+    
+            let nextDays;
+            if (this.classList.contains('active')) {
+                // If the button is already active, deselect it.
+                nextDays = currentSelectedDays.filter(item => item !== day);
+            } else {
+                // If the button is not active, select it.
+                nextDays = [...currentSelectedDays, day];
+            }
+    
             setVisibleDaysSelection(nextDays);
             renderAdminSlots();
             populateSlotSelect();
@@ -2279,16 +2542,36 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxJxoKe5JFN7K
             startEditSlot(selectedSlot.id, selectedSlot.slot_date, selectedSlot.slot_time, selectedSlot.slot_visible_days, selectedSlot.slot_weekend_type, selectedSlot.status);
         }
     });
+
     window.startEditSlot = startEditSlot;
     window.deleteSlot = deleteSlot;
     window.openSlotModal = openSlotModal;
     window.closeSlotModal = closeSlotModal;
 
-    document.getElementById('adminLogoutBtn').addEventListener('click', function() {
+    document.getElementById('toggleUserViewBtn').addEventListener('click', function() {
         document.getElementById('adminPanel').classList.add('hidden');
+        document.querySelector('.container').classList.remove('hidden');
+        document.querySelector('.admin-icon').classList.add('hidden');
+        document.getElementById('returnToAdminBtn').classList.remove('hidden');
+        // Hide the settings menu
+        document.getElementById('adminSettingsMenu').style.display = 'none';
+        updateBookingAvailabilityUI();
+    });
+
+    document.getElementById('returnToAdminBtn').addEventListener('click', function() {
+        document.getElementById('adminPanel').classList.remove('hidden');
+        document.querySelector('.container').classList.add('hidden');
+        document.querySelector('.admin-icon').classList.add('hidden');
+        this.classList.add('hidden');
+        updateBookingAvailabilityUI();
+    });
+    document.getElementById('adminLogoutBtn').addEventListener('click', function() {
+        clearAdminReloadState();
+        clearAdminLoginState();
+        document.getElementById('adminPanel').classList.add('hidden');
+        document.getElementById('returnToAdminBtn').classList.add('hidden');
         document.querySelector('.admin-icon').classList.remove('hidden');
         document.querySelector('.container').classList.remove('hidden');
         document.getElementById('adminLoginForm').reset();
         window.location.reload();
     });
-

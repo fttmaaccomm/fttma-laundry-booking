@@ -6,9 +6,17 @@
     <!-- jsPDF Libraries for PDF Export -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <title>FTTMa Laundry Booking System</title>
     <link rel="icon" type="image/png" href="logo.png">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="apple-touch-icon" href="logo.png">
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="FTTMa Laundry">
+    <meta name="theme-color" content="#2f80ed">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="stylesheet" href="styles.css?v=20260727-3">
 </head>
 <body>
 
@@ -173,7 +181,11 @@
 
         </div>
 
-        <button type="button" onclick="window.location.reload()" class="btn-action btn-blue">Make Another Reservation</button>
+        <div class="receipt-actions">
+            <button type="button" id="downloadReceiptBtn" class="btn-action btn-secondary">Download Receipt Image</button>
+        </div>
+
+        <button type="button" onclick="resetBookingFlow(false)" class="btn-action btn-blue">Make Another Reservation</button>
     </div>
 </div>
 
@@ -251,6 +263,7 @@
         <p style="margin: 0 0 12px; color: #475569;">Choose an existing slot to edit or delete, or add a new one here.</p>
         <div class="weekend-toggle-row">
             <span style="color: #475569;">Visible on days:</span>
+            <button type="button" class="weekend-choice-btn" id="allDaysBtn">All Days</button>
             <button type="button" class="weekend-choice-btn" id="mondayBtn">Mon</button>
             <button type="button" class="weekend-choice-btn" id="tuesdayBtn">Tue</button>
             <button type="button" class="weekend-choice-btn" id="wednesdayBtn">Wed</button>
@@ -262,7 +275,7 @@
         <div class="form-group" style="margin-bottom: 10px;">
             <label for="slotSelect">Existing Slots</label>
             <select id="slotSelect" style="width: 100%; padding: 10px; border-radius: 10px; border: 1px solid #cbd5e1;">
-                <option value="">Add a new slot</option>
+                <option value="">Select time slot</option>
             </select>
         </div>
         <div class="form-group" style="margin-bottom: 10px; display: none;">
@@ -365,13 +378,29 @@
     </svg>
 </div>
 
+<!-- RETURN TO ADMIN BUTTON -->
+<div id="returnToAdminBtn" class="admin-icon admin-access-button hidden" style="background-color: #2980b9;">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 24px; height: 24px;">
+        <path fill-rule="evenodd" d="M9.53 2.47a.75.75 0 0 1 0 1.06L4.81 8.25H15a6.75 6.75 0 0 1 0 13.5h-3a.75.75 0 0 1 0-1.5h3a5.25 5.25 0 1 0 0-10.5H4.81l4.72 4.72a.75.75 0 1 1-1.06 1.06l-6-6a.75.75 0 0 1 0-1.06l6-6a.75.75 0 0 1 1.06 0Z" clip-rule="evenodd" />
+    </svg>
+</div>
+
 <!-- ADMIN LOGIN MODAL -->
 <div id="adminLoginModal" class="modal hidden">
     <div class="modal-content">
         <h2>Admin Login</h2>
         <form id="adminLoginForm">
             <div class="form-group"><label for="adminUser">Username</label><input type="text" id="adminUser" required></div>
-            <div class="form-group"><label for="adminPass">Password</label><input type="password" id="adminPass" required></div>
+            <div class="form-group">
+                <label for="adminPass">Password</label>
+                <div class="password-wrapper">
+                    <input type="password" id="adminPass" required>
+                    <button type="button" id="toggleAdminPassVisibility" class="password-toggle-btn" aria-label="Toggle password visibility">
+                        <svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M10.5 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0z"/><path d="M0 8s3-5.5 8-5.5S16 8 16 8s-3 5.5-8 5.5S0 8 0 8zm8 3.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"/></svg>
+                        <svg id="eyeOffIcon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="hidden" viewBox="0 0 16 16"><path d="M13.359 11.238C15.06 9.72 16 8 16 8s-3-5.5-8-5.5a7.028 7.028 0 0 0-2.79.588l.77.771A5.94 5.94 0 0 1 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.134 13.134 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755-.165.165-.337.328-.517.486l.708.709z"/><path d="M11.297 9.176a3.5 3.5 0 0 0-4.474-4.474l.823.823a2.5 2.5 0 0 1 2.829 2.829l.822.822zm-2.943 1.299.822.822a3.5 3.5 0 0 1-4.474-4.474l.823.823a2.5 2.5 0 0 0 2.829 2.829z"/><path d="M3.35 5.47c-.18.16-.353.322-.518.487A13.134 13.134 0 0 0 1.172 8l.195.288c.335.48.83 1.12 1.465 1.755C4.121 11.332 5.881 12.5 8 12.5c.716 0 1.39-.133 2.02-.36l.77.772A7.029 7.029 0 0 1 8 13.5C3 13.5 0 8 0 8s.939-1.721 2.641-3.238l.708.709zm10.296 6.884-12-12 .708-.708 12 12-.708.708z"/></svg>
+                    </button>
+                </div>
+            </div>
             <button type="submit" id="adminLoginSubmitBtn" class="btn-action btn-blue">Login</button>
             <button type="button" class="btn-action btn-secondary" onclick="hideAdminLogin()">Cancel</button>
         </form>
@@ -396,6 +425,7 @@
                     <div id="adminSettingsMenu" style="display: none; position: absolute; right: 0; top: calc(100% + 8px);">
                         <button type="button" id="openAvailabilityModalBtn" class="btn-action" style="width: 100%; margin-top: 0; padding: 10px 12px; display: inline-flex; align-items: center; gap: 8px; justify-content: center;">Booking Availability</button>
                         <button type="button" id="openPasswordModalBtn" class="btn-action" style="width: 100%; margin-top: 8px; padding: 10px 12px; display: inline-flex; align-items: center; gap: 8px; justify-content: center;">Change Password</button>
+                        <button type="button" id="toggleUserViewBtn" class="btn-action" style="width: 100%; margin-top: 8px; padding: 10px 12px; display: inline-flex; align-items: center; gap: 8px; justify-content: center;">View User Page</button>
                         <button type="button" id="editTitleBtn" class="btn-action" style="width: 100%; margin-top: 8px; padding: 10px 12px; display: inline-flex; align-items: center; gap: 8px; justify-content: center;">Edit Page Title</button>
                         <button type="button" id="adminLogoutBtn" class="btn-action" style="width: 100%; margin-top: 8px; padding: 10px 12px;">Logout</button>
                     </div>
@@ -488,17 +518,14 @@
             <div class="admin-section-head">
                 <h3>Current Available Slots</h3>
             </div>
-            <div class="admin-table-container" style="max-height: 260px; margin-top: 12px;">
-                <table id="adminSlotsTable">
-                    <thead><tr><th>Date</th><th>Time</th></tr></thead>
-                    <tbody><tr><td colspan="2">Loading slots...</td></tr></tbody>
-                </table>
+            <div class="admin-slots-list" id="adminSlotsTable">
+                <div class="admin-slots-empty">Loading slots...</div>
             </div>
         </div>
     </div>
 </div>
 
-<script src="app.js"></script>
+<script src="app.js?v=20260727-3"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function(){
