@@ -9,6 +9,7 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby-SWj-kTDYBX
     let adminMainPageTitle = 'FTTMa Laundry Booking System';
     let bookingAvailabilityState = { underMaintenance: false, termBreak: false };
     let adminBookingColumnPreferences = getDefaultAdminBookingColumns();
+    let adminInactivityTimer = null; // New global variable for admin inactivity
     let autoRefreshTimer = null;
     let autoRefreshInProgress = false;
 
@@ -1283,6 +1284,20 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby-SWj-kTDYBX
         document.getElementById('adminPanel').classList.remove('hidden');
         updateBookingAvailabilityUI();
         refreshAdminData();
+        resetAdminInactivityTimer(); // Start timer after auto-login
+    }
+
+    // New function to handle admin logout logic
+    function performAdminLogout() {
+        clearTimeout(adminInactivityTimer); // Ensure the timer is cleared
+        clearAdminReloadState();
+        clearAdminLoginState();
+        document.getElementById('adminPanel').classList.add('hidden');
+        document.getElementById('returnToAdminBtn').classList.add('hidden');
+        document.querySelector('.admin-icon').classList.remove('hidden');
+        document.querySelector('.container').classList.remove('hidden');
+        document.getElementById('adminLoginForm').reset();
+        window.location.reload();
     }
 
     function getSlotDisabledToggleValue() {
@@ -1507,9 +1522,32 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby-SWj-kTDYBX
         refreshAdminData().finally(function() {
             submitBtn.disabled = false;
             submitBtn.innerHTML = 'Login';
+            resetAdminInactivityTimer(); // Start timer after successful login
         });
     }
 
+    function resetAdminInactivityTimer() {
+        clearTimeout(adminInactivityTimer);
+        adminInactivityTimer = setTimeout(performAdminLogout, 2 * 60 * 1000); // 2 minutes (120,000 ms)
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Existing DOMContentLoaded content
+        // ...
+
+        const adminPanel = document.getElementById('adminPanel');
+        const adminActivityEvents = ['click', 'keypress', 'mousemove', 'scroll'];
+
+        adminActivityEvents.forEach(event => {
+            adminPanel.addEventListener(event, function() {
+                // Only reset the timer if the admin panel is currently visible
+                if (!adminPanel.classList.contains('hidden')) {
+                    resetAdminInactivityTimer();
+                }
+            });
+        });
+    });
+    
     document.getElementById('toggleAdminPassVisibility').addEventListener('click', function() {
         const passInput = document.getElementById('adminPass');
         const eyeIcon = document.getElementById('eyeIcon');
@@ -2576,6 +2614,7 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby-SWj-kTDYBX
         document.querySelector('.admin-icon').classList.add('hidden');
         document.getElementById('returnToAdminBtn').classList.remove('hidden');
         // Hide the settings menu
+        clearTimeout(adminInactivityTimer); // Clear admin timer when switching to user view
         document.getElementById('adminSettingsMenu').style.display = 'none';
         updateBookingAvailabilityUI();
     });
@@ -2586,14 +2625,8 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby-SWj-kTDYBX
         document.querySelector('.admin-icon').classList.add('hidden');
         this.classList.add('hidden');
         updateBookingAvailabilityUI();
+        resetAdminInactivityTimer(); // Restart admin timer when returning to admin view
     });
     document.getElementById('adminLogoutBtn').addEventListener('click', function() {
-        clearAdminReloadState();
-        clearAdminLoginState();
-        document.getElementById('adminPanel').classList.add('hidden');
-        document.getElementById('returnToAdminBtn').classList.add('hidden');
-        document.querySelector('.admin-icon').classList.remove('hidden');
-        document.querySelector('.container').classList.remove('hidden');
-        document.getElementById('adminLoginForm').reset();
-        window.location.reload();
+        performAdminLogout(); // Use the new function for logout
     });
