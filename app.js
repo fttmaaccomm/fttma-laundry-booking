@@ -12,6 +12,7 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyf40LEe5qOdP
     let adminInactivityTimer = null; // New global variable for admin inactivity
     let autoRefreshTimer = null;
     let autoRefreshInProgress = false;
+    let mainPageIdleTimer = null;
 
     function postToScript(payload) {
         const searchParams = new URLSearchParams();
@@ -450,33 +451,83 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyf40LEe5qOdP
     }
     let inactivityTimer;
 
+    function parseJsonpResponse(text) {
+        const trimmedText = String(text || '').trim();
+        if (!trimmedText) {
+            return null;
+        }
+
+        const jsonpMatch = trimmedText.match(/^([A-Za-z_$][\w$]*)\s*\((.*)\)\s*;?$/s);
+        if (jsonpMatch) {
+            try {
+                return JSON.parse(jsonpMatch[2]);
+            } catch (err) {
+                return null;
+            }
+        }
+
+        try {
+            return JSON.parse(trimmedText);
+        } catch (err) {
+            return null;
+        }
+    }
+
+    function handleScheduleDataPayload(data, refreshMainSchedule) {
+        const normalizedData = Array.isArray(data) ? data : (data && data.bookings ? data.bookings : []);
+        bookedSlots = normalizedData || [];
+        const remoteSlots = Array.isArray(data && data.timeSlots) ? data.timeSlots : [];
+        adminTimeSlotsData = mergeTimeSlots(remoteSlots);
+
+        if (refreshMainSchedule) {
+            refreshSlotUi();
+        }
+    }
+
     function loadScheduleDataFromServer(refreshMainSchedule = true, silent = false) {
         return new Promise(function(resolve) {
-            window.onDataLoaded = function(data) {
-                const normalizedData = Array.isArray(data) ? data : (data && data.bookings ? data.bookings : []);
-                bookedSlots = normalizedData || [];
-                const remoteSlots = Array.isArray(data && data.timeSlots) ? data.timeSlots : [];
-                adminTimeSlotsData = mergeTimeSlots(remoteSlots);
+            const scriptUrl = GOOGLE_SCRIPT_URL + "?action=getScheduleData&callback=onDataLoaded&t=" + Date.now();
 
-                if (refreshMainSchedule) {
-                    refreshSlotUi();
+            fetch(scriptUrl, {
+                method: 'GET',
+                mode: 'cors',
+                credentials: 'omit',
+                redirect: 'follow',
+                headers: {
+                    'Accept': 'application/javascript, text/javascript, application/json'
                 }
+            }).then(function(response) {
+                if (!response.ok) {
+                    throw new Error('Schedule request failed');
+                }
+                return response.text();
+            }).then(function(text) {
+                const parsedData = parseJsonpResponse(text);
+                if (!parsedData) {
+                    throw new Error('Invalid schedule payload');
+                }
+                handleScheduleDataPayload(parsedData, refreshMainSchedule);
                 resolve(true);
-            };
+            }).catch(function() {
+                window.onDataLoaded = function(data) {
+                    handleScheduleDataPayload(data, refreshMainSchedule);
+                    resolve(true);
+                };
 
-            const script = document.createElement('script');
-            script.src = GOOGLE_SCRIPT_URL + "?action=getScheduleData&callback=onDataLoaded&t=" + Date.now();
-            script.onerror = () => {
-                console.error("Failed to load schedule data from Google Sheets.");
-                if (!silent) {
-                    showWarningModal("Could not load schedule data. Please check your connection and refresh the page.");
-                }
-                resolve(false);
-            };
-            script.onload = () => {
-                document.body.removeChild(script);
-            };
-            document.body.appendChild(script);
+                const script = document.createElement('script');
+                script.src = scriptUrl;
+                script.onerror = () => {
+                    console.error("Failed to load schedule data from Google Sheets.");
+                    if (!silent) {
+                        showWarningModal("Could not load schedule data. Please check your connection and refresh the page.");
+                    }
+                    resolve(false);
+                };
+                script.onload = () => {
+                    document.body.removeChild(script);
+                };
+                document.body.appendChild(script);
+            });
         });
     }
 
@@ -542,6 +593,48 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyf40LEe5qOdP
         });
     }
 
+    function isMainPageActive() {
+        const mainContainer = document.querySelector('.container');
+        const adminPanel = document.getElementById('adminPanel');
+        const adminLoginModal = document.getElementById('adminLoginModal');
+        const containerVisible = !!(mainContainer && !mainContainer.classList.contains('hidden'));
+        const adminVisible = !!(adminPanel && !adminPanel.classList.contains('hidden'));
+        const adminLoginVisible = !!(adminLoginModal && !adminLoginModal.classList.contains('hidden'));
+        return containerVisible && !adminVisible && !adminLoginVisible;
+    }
+
+    function showMainPageIdleOverlay() {
+        if (!isMainPageActive()) {
+            hideMainPageIdleOverlay();
+            return;
+        }
+
+        const overlay = document.getElementById('idleOverlay');
+        if (overlay) {
+            overlay.classList.remove('hidden');
+        }
+    }
+
+    function hideMainPageIdleOverlay() {
+        const overlay = document.getElementById('idleOverlay');
+        if (overlay) {
+            overlay.classList.add('hidden');
+        }
+    }
+
+    function resetMainPageIdleOverlay() {
+        clearTimeout(mainPageIdleTimer);
+        hideMainPageIdleOverlay();
+
+        if (!isMainPageActive()) {
+            return;
+        }
+
+        mainPageIdleTimer = setTimeout(function() {
+            showMainPageIdleOverlay();
+        }, 30000);
+    }
+
     window.onload = function() {
         const pricingValues = getStoredPrices();
         washerPrice = pricingValues.washer;
@@ -565,7 +658,18 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyf40LEe5qOdP
 
         // Start the inactivity timer when the page loads
         resetInactivityTimer();
-        ['click', 'keypress', 'touchstart'].forEach(evt => document.addEventListener(evt, resetInactivityTimer, false));
+        resetMainPageIdleOverlay();
+        ['click', 'touchstart', 'pointerdown', 'keydown'].forEach(function(evt) {
+            document.addEventListener(evt, resetMainPageIdleOverlay, false);
+        });
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                clearTimeout(mainPageIdleTimer);
+                hideMainPageIdleOverlay();
+            } else {
+                resetMainPageIdleOverlay();
+            }
+        });
     };
     function normalize(str){
     return String(str)
@@ -2610,6 +2714,7 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyf40LEe5qOdP
         clearTimeout(adminInactivityTimer); // Clear admin timer when switching to user view
         document.getElementById('adminSettingsMenu').style.display = 'none';
         updateBookingAvailabilityUI();
+        resetMainPageIdleOverlay();
     });
 
     document.getElementById('returnToAdminBtn').addEventListener('click', function() {
@@ -2619,6 +2724,7 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyf40LEe5qOdP
         this.classList.add('hidden');
         updateBookingAvailabilityUI();
         resetAdminInactivityTimer(); // Restart admin timer when returning to admin view
+        resetMainPageIdleOverlay();
     });
     document.getElementById('adminLogoutBtn').addEventListener('click', function() {
         performAdminLogout(); // Use the new function for logout
