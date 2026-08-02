@@ -1178,6 +1178,55 @@
             background: rgba(250,250,252,0.96);
         }
 
+        .admin-pagination {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-top: 12px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            background: rgba(248, 250, 252, 0.9);
+            border: 1px solid rgba(226, 232, 240, 0.9);
+        }
+        .admin-pagination-summary {
+            color: #475569;
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+        .admin-pagination-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .admin-pagination-btn {
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            background: white;
+            color: #0f172a;
+            border-radius: 999px;
+            padding: 7px 11px;
+            min-width: 36px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .admin-pagination-btn:hover:not(:disabled) {
+            background: #eff6ff;
+            border-color: #93c5fd;
+            color: #1d4ed8;
+        }
+        .admin-pagination-btn.active {
+            background: linear-gradient(135deg, var(--primary), #4f8ef7);
+            color: white;
+            border-color: transparent;
+        }
+        .admin-pagination-btn:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+
         /* Status chips */
         .status-chip {
             display: inline-flex;

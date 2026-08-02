@@ -1348,8 +1348,11 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyf40LEe5qOdP
     // --- ADMIN PANEL SCRIPT ---
 
     let adminBookingsData = []; // To store the raw admin data for sorting
+    let adminVisibleBookingRows = [];
     let adminTimeSlotsData = getStoredTimeSlots();
     let currentAdminSort = { key: 'timestamp', direction: 'desc' };
+    const MAX_ADMIN_BOOKING_ROWS_PER_PAGE = 10;
+    let adminPaginationState = { currentPage: 1, pageSize: MAX_ADMIN_BOOKING_ROWS_PER_PAGE };
     let editingSlotId = null;
     let isSavingSlot = false;
 
@@ -2312,6 +2315,8 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyf40LEe5qOdP
             filteredData = filteredData.filter(booking => booking.timestamp_date < inclusiveEndDate);
         }
 
+        adminVisibleBookingRows = filteredData;
+        adminPaginationState.currentPage = 1;
         renderAdminSummaryMetrics(filteredData);
         renderAdminTable(filteredData);
     }
@@ -2335,6 +2340,56 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyf40LEe5qOdP
         if (doneEl) doneEl.textContent = String(done);
         if (pendingEl) pendingEl.textContent = String(pending);
         if (rangeEl) rangeEl.textContent = rangeText;
+    }
+
+    function goToAdminPage(pageNumber) {
+        const totalItems = Array.isArray(adminVisibleBookingRows) ? adminVisibleBookingRows.length : 0;
+        const totalPages = Math.max(1, Math.ceil(totalItems / Math.max(1, MAX_ADMIN_BOOKING_ROWS_PER_PAGE)));
+        adminPaginationState.currentPage = Math.min(Math.max(1, Number(pageNumber) || 1), totalPages);
+        renderAdminTable(adminVisibleBookingRows);
+    }
+
+    function renderAdminPaginationControls(totalItems) {
+        const container = document.getElementById('adminPaginationControls');
+        if (!container) return;
+
+        const totalPages = Math.max(1, Math.ceil(totalItems / Math.max(1, MAX_ADMIN_BOOKING_ROWS_PER_PAGE)));
+        const currentPage = Math.min(adminPaginationState.currentPage, totalPages);
+        adminPaginationState.currentPage = currentPage;
+
+        if (!totalItems) {
+            container.innerHTML = '';
+            return;
+        }
+
+        const buttons = [];
+        const addButton = function(page, label, disabled, active) {
+            buttons.push(`<button type="button" class="admin-pagination-btn${active ? ' active' : ''}" data-page="${page}" ${disabled ? 'disabled' : ''}>${label}</button>`);
+        };
+
+        addButton(Math.max(1, currentPage - 1), '‹', currentPage === 1, false);
+
+        const startPage = Math.max(1, currentPage - 2);
+        const endPage = Math.min(totalPages, currentPage + 2);
+        for (let page = startPage; page <= endPage; page++) {
+            addButton(page, String(page), false, page === currentPage);
+        }
+
+        addButton(Math.min(totalPages, currentPage + 1), '›', currentPage === totalPages, false);
+
+        const startItem = ((currentPage - 1) * MAX_ADMIN_BOOKING_ROWS_PER_PAGE) + 1;
+        const endItem = Math.min(currentPage * MAX_ADMIN_BOOKING_ROWS_PER_PAGE, totalItems);
+
+        container.innerHTML = `
+            <div class="admin-pagination-summary">Showing ${startItem}-${endItem} of ${totalItems} bookings</div>
+            <div class="admin-pagination-buttons">${buttons.join('')}</div>
+        `;
+
+        container.querySelectorAll('[data-page]').forEach(function(button) {
+            button.addEventListener('click', function() {
+                goToAdminPage(this.dataset.page);
+            });
+        });
     }
 
     function updateBookingDoneStatus(rowNumber, isDone) {
@@ -2430,9 +2485,17 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyf40LEe5qOdP
         });
         thead.appendChild(headerRow);
 
+        const sourceRows = Array.isArray(data) ? data : [];
+        const totalItems = sourceRows.length;
+        const totalPages = Math.max(1, Math.ceil(totalItems / Math.max(1, MAX_ADMIN_BOOKING_ROWS_PER_PAGE)));
+        adminPaginationState.currentPage = Math.min(adminPaginationState.currentPage, totalPages);
+        const startIndex = (adminPaginationState.currentPage - 1) * MAX_ADMIN_BOOKING_ROWS_PER_PAGE;
+        const pagedRows = totalItems ? sourceRows.slice(startIndex, startIndex + MAX_ADMIN_BOOKING_ROWS_PER_PAGE) : [];
+
         tbody.innerHTML = '';
-        if (!data || data.length === 0) {
+        if (!pagedRows || pagedRows.length === 0) {
             tbody.innerHTML = `<tr><td colspan="${Math.max(1, visibleColumns.length)}">No bookings found.</td></tr>`;
+            renderAdminPaginationControls(totalItems);
             return;
         }
 
@@ -2443,7 +2506,7 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyf40LEe5qOdP
             return columnConfig.label;
         });
 
-        data.forEach(function(booking) {
+        pagedRows.forEach(function(booking) {
             const row = tbody.insertRow();
             const isDone = Boolean(booking.done);
             row.className = isDone ? 'booking-done-row' : '';
@@ -2504,6 +2567,8 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyf40LEe5qOdP
                 });
             }
         });
+
+        renderAdminPaginationControls(totalItems);
     }
 
     function sortAndRenderAdminTable(columnKey, direction) {
@@ -2524,21 +2589,56 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyf40LEe5qOdP
 
     function exportAdminBookingsCsv() {
         const table = document.getElementById('adminBookingsTable');
-        const headers = Array.from(table.querySelectorAll('thead th')).map(function(th) {
-            return '"' + th.textContent.trim().replace(/"/g, '""') + '"';
+        const visibleColumns = getVisibleAdminBookingColumns();
+        const headers = visibleColumns.map(function(columnKey) {
+            const columnConfig = getAdminBookingColumnConfig().find(function(column) {
+                return column.key === columnKey;
+            }) || { key: columnKey, label: columnKey };
+            return '"' + String(columnConfig.label).trim().replace(/"/g, '""') + '"';
         });
-        const rows = Array.from(table.querySelectorAll('tbody tr'))
-            .filter(function(row) {
-                return row.querySelectorAll('td').length > 0;
-            })
-            .map(function(row) {
-                return Array.from(row.querySelectorAll('td')).map(function(cell) {
-                    const checkbox = cell.querySelector('input[type="checkbox"]');
-                    let cellValue = checkbox ? (checkbox.checked ? 'Done' : 'Pending') : cell.textContent.trim();
-                    cellValue = cellValue.replace(/"/g, '""');
-                    return '"' + cellValue + '"';
-                }).join(',');
+        const exportRows = Array.isArray(adminVisibleBookingRows) && adminVisibleBookingRows.length ? adminVisibleBookingRows : adminBookingsData;
+        const rows = exportRows.map(function(booking) {
+            const bookingValues = visibleColumns.map(function(columnKey) {
+                if (columnKey === 'done') {
+                    return booking.done ? 'Done' : 'Pending';
+                }
+                if (columnKey === 'transaction_no') {
+                    return booking.transaction_no || '';
+                }
+                if (columnKey === 'timestamp') {
+                    return booking.timestamp || '';
+                }
+                if (columnKey === 'gender') {
+                    return booking.gender || '';
+                }
+                if (columnKey === 'name') {
+                    return booking.name || '';
+                }
+                if (columnKey === 'room_no') {
+                    return booking.room_no || '';
+                }
+                if (columnKey === 'rented') {
+                    return booking.rented || '';
+                }
+                if (columnKey === 'time_rented_washer') {
+                    return booking.time_rented_washer || '';
+                }
+                if (columnKey === 'time_rented_dryer') {
+                    return booking.time_rented_dryer || '';
+                }
+                if (columnKey === 'payment_mode') {
+                    return booking.payment_mode || '';
+                }
+                if (columnKey === 'paid_to') {
+                    return booking.paid_to || '';
+                }
+                return booking[columnKey] || '';
             });
+            return bookingValues.map(function(value) {
+                const cellValue = String(value).replace(/"/g, '""');
+                return '"' + cellValue + '"';
+            }).join(',');
+        });
 
         if (!rows.length) {
             showWarningModal('There is no booking data to export.', 'Export Empty');
