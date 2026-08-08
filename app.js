@@ -1,4 +1,4 @@
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyf40LEe5qOdPOzW6145eOmv-PPeWYTvbfwsngg8FenfkR6j-3MdaVWsPPBULEOhaJ_pQ/exec";
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxcwx3HhqQ5PkYuD9qXcgIz4xKaIbFba3JqTc2EgKhsTZh8FBkhU-ce4HqolNUSNDAb/exec";
     
     const DEFAULT_WASHER_PRICE = 60;
     const DEFAULT_DRYER_PRICE = 60;
@@ -29,6 +29,7 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyf40LEe5qOdP
         return fetch(GOOGLE_SCRIPT_URL, {
             method: 'POST',
             mode: 'cors',
+            credentials: 'omit',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
             body: searchParams.toString()
         }).then(async function(response) {
@@ -99,6 +100,7 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyf40LEe5qOdP
             script.src = GOOGLE_SCRIPT_URL + "?action=getPricing&callback=" + callbackName + "&t=" + Date.now();
             script.onerror = function() {
                 delete window[callbackName];
+                document.body.removeChild(script);
                 const fallbackPrices = getStoredPrices();
                 washerPrice = fallbackPrices.washer;
                 dryerPrice = fallbackPrices.dryer;
@@ -261,6 +263,7 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyf40LEe5qOdP
         script.src = GOOGLE_SCRIPT_URL + "?action=getAdminSettings&callback=" + callbackName + "&t=" + Date.now();
         script.onerror = function() {
             delete window[callbackName];
+            document.body.removeChild(script);
             if (!silent) {
                 showWarningModal('Could not load admin settings. Please refresh the page if needed.');
             }
@@ -486,48 +489,29 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyf40LEe5qOdP
 
     function loadScheduleDataFromServer(refreshMainSchedule = true, silent = false) {
         return new Promise(function(resolve) {
-            const scriptUrl = GOOGLE_SCRIPT_URL + "?action=getScheduleData&callback=onDataLoaded&t=" + Date.now();
-
-            fetch(scriptUrl, {
-                method: 'GET',
-                mode: 'cors',
-                credentials: 'omit',
-                redirect: 'follow',
-                headers: {
-                    'Accept': 'application/javascript, text/javascript, application/json'
-                }
-            }).then(function(response) {
-                if (!response.ok) {
-                    throw new Error('Schedule request failed');
-                }
-                return response.text();
-            }).then(function(text) {
-                const parsedData = parseJsonpResponse(text);
-                if (!parsedData) {
-                    throw new Error('Invalid schedule payload');
-                }
-                handleScheduleDataPayload(parsedData, refreshMainSchedule);
+            const callbackName = 'onScheduleDataLoaded' + Date.now();
+            window[callbackName] = function(data) {
+                delete window[callbackName];
+                handleScheduleDataPayload(data, refreshMainSchedule);
                 resolve(true);
-            }).catch(function() {
-                window.onDataLoaded = function(data) {
-                    handleScheduleDataPayload(data, refreshMainSchedule);
-                    resolve(true);
-                };
+            };
 
-                const script = document.createElement('script');
-                script.src = scriptUrl;
-                script.onerror = () => {
-                    console.error("Failed to load schedule data from Google Sheets.");
-                    if (!silent) {
-                        showWarningModal("Could not load schedule data. Please check your connection and refresh the page.");
-                    }
-                    resolve(false);
-                };
-                script.onload = () => {
-                    document.body.removeChild(script);
-                };
-                document.body.appendChild(script);
-            });
+            const scriptUrl = GOOGLE_SCRIPT_URL + "?action=getScheduleData&callback=" + callbackName + "&t=" + Date.now();
+            const script = document.createElement('script');
+            script.src = scriptUrl;
+            script.onerror = function() {
+                delete window[callbackName];
+                document.body.removeChild(script);
+                console.error('Failed to load schedule data from Google Sheets.');
+                if (!silent) {
+                    showWarningModal('Could not load schedule data. Please check your connection and refresh the page.');
+                }
+                resolve(false);
+            };
+            script.onload = function() {
+                document.body.removeChild(script);
+            };
+            document.body.appendChild(script);
         });
     }
 
@@ -708,6 +692,7 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyf40LEe5qOdP
         script.src = GOOGLE_SCRIPT_URL + "?action=checkReference&reference=" + encodeURIComponent(normalizedReference) + "&callback=" + callbackName + "&t=" + Date.now();
         script.onerror = () => {
             delete window[callbackName];
+            document.body.removeChild(script);
             callback(null);
         };
         script.onload = () => {
@@ -1856,7 +1841,9 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyf40LEe5qOdP
         }
 
         return new Promise(function(resolve) {
-            window.onAdminBookingsLoaded = function(data) {
+            const callbackName = 'onAdminBookingsLoaded' + Date.now();
+            window[callbackName] = function(data) {
+                delete window[callbackName];
                 if (data && data.authError) {
                     clearAdminToken();
                     performAdminLogout();
@@ -1876,8 +1863,10 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyf40LEe5qOdP
             };
 
             const script = document.createElement('script');
-            script.src = GOOGLE_SCRIPT_URL + "?action=getAdminData&adminToken=" + encodeURIComponent(getAdminToken() || '') + "&callback=onAdminBookingsLoaded&t=" + Date.now();
+            script.src = GOOGLE_SCRIPT_URL + "?action=getAdminData&adminToken=" + encodeURIComponent(getAdminToken() || '') + "&callback=" + callbackName + "&t=" + Date.now();
             script.onerror = () => {
+                delete window[callbackName];
+                document.body.removeChild(script);
                 if (!silent) {
                     tbody.innerHTML = '<tr><td colspan="7">Failed to load data.</td></tr>';
                 }
@@ -1896,7 +1885,9 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyf40LEe5qOdP
         }
 
         return new Promise(function(resolve) {
-            window.onAdminSlotsLoaded = function(data) {
+            const callbackName = 'onAdminSlotsLoaded' + Date.now();
+            window[callbackName] = function(data) {
+                delete window[callbackName];
                 const remoteSlots = (data && data.timeSlots) ? data.timeSlots : [];
                 adminTimeSlotsData = mergeTimeSlots(remoteSlots);
                 container.dataset.initialized = 'true';
@@ -1905,8 +1896,10 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyf40LEe5qOdP
             };
 
             const script = document.createElement('script');
-            script.src = GOOGLE_SCRIPT_URL + "?action=getTimeSlots&callback=onAdminSlotsLoaded&t=" + Date.now();
+            script.src = GOOGLE_SCRIPT_URL + "?action=getTimeSlots&callback=" + callbackName + "&t=" + Date.now();
             script.onerror = () => {
+                delete window[callbackName];
+                document.body.removeChild(script);
                 if (!silent) {
                     container.innerHTML = '<div class="admin-slots-empty">Failed to load slots.</div>';
                 }
