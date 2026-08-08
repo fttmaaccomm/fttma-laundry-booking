@@ -80,26 +80,36 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxcwx3HhqQ5Pk
         });
     }
 
+    window.onPricesLoaded = function(data) {
+        if (typeof window.__fttmaPricesResolver !== 'function') {
+            return;
+        }
+
+        const nextPrices = {
+            washer: Number(data && data.washer !== undefined ? data.washer : DEFAULT_WASHER_PRICE),
+            dryer: Number(data && data.dryer !== undefined ? data.dryer : DEFAULT_DRYER_PRICE)
+        };
+        washerPrice = nextPrices.washer;
+        dryerPrice = nextPrices.dryer;
+        applyPricingToUI();
+        if (typeof window.__fttmaPricesCallback === 'function') {
+            window.__fttmaPricesCallback(nextPrices);
+        }
+        window.__fttmaPricesResolver(nextPrices);
+        window.__fttmaPricesResolver = null;
+        window.__fttmaPricesCallback = null;
+    };
+
     function loadPricesFromServer(callback, silent = false) {
         return new Promise(function(resolve) {
-            const callbackName = 'onPricesLoaded' + Date.now();
-            window[callbackName] = function(data) {
-                delete window[callbackName];
-                const nextPrices = {
-                    washer: Number(data && data.washer !== undefined ? data.washer : DEFAULT_WASHER_PRICE),
-                    dryer: Number(data && data.dryer !== undefined ? data.dryer : DEFAULT_DRYER_PRICE)
-                };
-                washerPrice = nextPrices.washer;
-                dryerPrice = nextPrices.dryer;
-                applyPricingToUI();
-                if (callback) callback(nextPrices);
-                resolve(nextPrices);
-            };
+            window.__fttmaPricesResolver = resolve;
+            window.__fttmaPricesCallback = callback;
 
             const script = document.createElement('script');
-            script.src = GOOGLE_SCRIPT_URL + "?action=getPricing&callback=" + callbackName + "&t=" + Date.now();
+            script.src = GOOGLE_SCRIPT_URL + "?action=getPricing&callback=onPricesLoaded&t=" + Date.now();
             script.onerror = function() {
-                delete window[callbackName];
+                window.__fttmaPricesResolver = null;
+                window.__fttmaPricesCallback = null;
                 document.body.removeChild(script);
                 const fallbackPrices = getStoredPrices();
                 washerPrice = fallbackPrices.washer;
@@ -279,6 +289,7 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxcwx3HhqQ5Pk
 
     let lastBookingData = {}; // To store the data for the email receipt
     let selectedWasherTime = "Not Selected / Not Rented";
+    let selectedWasherDateKey = null;
     let selectedDryerTime = "Not Selected / Not Rented";
     let statusToastTimer = null;
     
@@ -487,20 +498,28 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxcwx3HhqQ5Pk
         }
     }
 
+    window.onScheduleDataLoaded = function(data) {
+        if (typeof window.__fttmaScheduleRefreshMainSchedule === 'undefined') {
+            window.__fttmaScheduleRefreshMainSchedule = true;
+        }
+
+        handleScheduleDataPayload(data, window.__fttmaScheduleRefreshMainSchedule);
+        if (typeof window.__fttmaScheduleResolver === 'function') {
+            window.__fttmaScheduleResolver(true);
+            window.__fttmaScheduleResolver = null;
+        }
+    };
+
     function loadScheduleDataFromServer(refreshMainSchedule = true, silent = false) {
         return new Promise(function(resolve) {
-            const callbackName = 'onScheduleDataLoaded' + Date.now();
-            window[callbackName] = function(data) {
-                delete window[callbackName];
-                handleScheduleDataPayload(data, refreshMainSchedule);
-                resolve(true);
-            };
+            window.__fttmaScheduleRefreshMainSchedule = refreshMainSchedule;
+            window.__fttmaScheduleResolver = resolve;
 
-            const scriptUrl = GOOGLE_SCRIPT_URL + "?action=getScheduleData&callback=" + callbackName + "&t=" + Date.now();
+            const scriptUrl = GOOGLE_SCRIPT_URL + "?action=getScheduleData&callback=onScheduleDataLoaded&t=" + Date.now();
             const script = document.createElement('script');
             script.src = scriptUrl;
             script.onerror = function() {
-                delete window[callbackName];
+                window.__fttmaScheduleResolver = null;
                 document.body.removeChild(script);
                 console.error('Failed to load schedule data from Google Sheets.');
                 if (!silent) {
@@ -788,6 +807,126 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxcwx3HhqQ5Pk
         return Number.isNaN(parsed.getTime()) ? null : parsed;
     }
 
+    function parseTimeString(value) {
+        const trimmed = String(value || '').trim();
+        const match = trimmed.match(/^(\d{1,2})(?::(\d{2}))?\s*([AaPp][Mm])$/);
+        if (!match) return null;
+
+        var hour = Number(match[1]);
+        var minute = Number(match[2] || '0');
+        var meridiem = match[3].toLowerCase();
+
+        if (meridiem === 'pm' && hour !== 12) {
+            hour += 12;
+        }
+        if (meridiem === 'am' && hour === 12) {
+            hour = 0;
+        }
+
+        return hour * 60 + minute;
+    }
+
+    function parseSlotTimeRange(slotTime) {
+        if (!slotTime) return null;
+        const parts = String(slotTime).split('-').map(function(part) {
+            return part.trim();
+        }).filter(Boolean);
+        if (!parts.length) return null;
+
+        var start = parseTimeString(parts[0]);
+        var end = parts.length > 1 ? parseTimeString(parts[parts.length - 1]) : null;
+        if (start === null) return null;
+        if (end === null) end = start;
+        return { start: start, end: end };
+    }
+
+    function compareSlotTimeValues(a, b) {
+        if (a == null && b == null) return 0;
+        if (a == null) return -1;
+        if (b == null) return 1;
+
+        var aRange = parseSlotTimeRange(a);
+        var bRange = parseSlotTimeRange(b);
+
+        if (!aRange || !bRange) {
+            return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' });
+        }
+
+        if (aRange.start !== bRange.start) {
+            return aRange.start - bRange.start;
+        }
+        return aRange.end - bRange.end;
+    }
+
+    function parseUniqueDateTime(uniqueText) {
+        var parts = String(uniqueText || '').split(' @ ');
+        return {
+            dateString: parts[0] || '',
+            slotTime: parts[1] || ''
+        };
+    }
+
+    function isDryerSlotDisabledByWasherSelection(dateString, slotTime) {
+        var selectedChoice = document.querySelector('input[name="rented"]:checked');
+        if (!selectedChoice || selectedChoice.value !== 'Both') {
+            return false;
+        }
+
+        if (!selectedWasherTime || selectedWasherTime === 'Not Selected / Not Rented') {
+            return true;
+        }
+
+        var washerSelection = parseUniqueDateTime(selectedWasherTime);
+        var washerDateKey = selectedWasherDateKey || getDateKey(washerSelection.dateString);
+        if (!washerDateKey) {
+            return true;
+        }
+
+        var currentDateKey = getDateKey(dateString);
+        if (!currentDateKey) {
+            return false;
+        }
+
+        if (currentDateKey < washerDateKey) {
+            return true;
+        }
+
+        if (currentDateKey !== washerDateKey) {
+            return false;
+        }
+
+        var washerRange = parseSlotTimeRange(washerSelection.slotTime);
+        var dryerRange = parseSlotTimeRange(slotTime);
+        if (!washerRange || !dryerRange) {
+            return false;
+        }
+
+        return dryerRange.start < washerRange.end;
+    }
+
+    function isDryerSelectionStillValid() {
+        if (!selectedWasherTime || selectedWasherTime === 'Not Selected / Not Rented') {
+            return true;
+        }
+        if (!selectedDryerTime || selectedDryerTime === 'Not Selected / Not Rented') {
+            return true;
+        }
+
+        var washer = parseUniqueDateTime(selectedWasherTime);
+        var dryer = parseUniqueDateTime(selectedDryerTime);
+        if (washer.dateString !== dryer.dateString) {
+            return true;
+        }
+
+        var washerRange = parseSlotTimeRange(washer.slotTime);
+        var dryerRange = parseSlotTimeRange(dryer.slotTime);
+        if (!washerRange || !dryerRange) {
+            return true;
+        }
+
+        return dryerRange.start >= washerRange.end;
+    }
+
     function getDateKey(value) {
         const parsed = parseSlotDateValue(value);
         if (!parsed) return null;
@@ -859,10 +998,14 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxcwx3HhqQ5Pk
                     return !slotDate && !getSlotVisibleDays(slot).length;
                 });
 
-                timesToRender = [...matchingSlots, ...generalSlots].map(slot => ({
-                    slotTime: String(slot.slot_time || '').trim(),
-                    slot
-                }));
+                timesToRender = [...matchingSlots, ...generalSlots]
+                    .map(slot => ({
+                        slotTime: String(slot.slot_time || '').trim(),
+                        slot
+                    }))
+                    .sort(function(a, b) {
+                        return compareSlotTimeValues(a.slotTime, b.slotTime);
+                    });
             }
 
             if (timesToRender.length === 0) {
@@ -888,10 +1031,11 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxcwx3HhqQ5Pk
                 const isDayRestricted = Boolean(visibleDays.length);
                 const isAvailableForDay = isSlotAvailableForDay(slot, currentDayNormalized);
                 const displayLabel = slotTime;
+                const disableDueToWasher = classPrefix === 'dryerSlot' && isDryerSlotDisabledByWasherSelection(dateString, slotTime);
 
                 if (isAlreadyBooked) {
                     slotsCell.innerHTML += `<button type="button" class="time-slot-btn" style="background: #e74c3c; color: white; border-color: #e74c3c; cursor: not-allowed;" disabled>BOOKED 🔒</button><div style="margin-bottom:6px;"></div>`;
-                } else if (dateDisabledByCalendar) {
+                } else if (dateDisabledByCalendar || disableDueToWasher) {
                     slotsCell.innerHTML += `<button type="button" class="time-slot-btn" style="border-color: #bdc3c7; color: #bdc3c7; cursor: not-allowed;" disabled>${slotTime}</button><div style="margin-bottom:6px;"></div>`;
                 } else if (isDayRestricted && !isAvailableForDay) {
                     slotsCell.innerHTML += `<button type="button" class="time-slot-btn" style="border-color: #bdc3c7; color: #bdc3c7; cursor: not-allowed;" disabled>${displayLabel}</button><div style="margin-bottom:6px;"></div>`;
@@ -908,8 +1052,16 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxcwx3HhqQ5Pk
         document.querySelectorAll('.' + classPrefix).forEach(btn => btn.classList.remove('selected'));
         buttonElement.classList.add('selected');
 
-        if(classPrefix === 'washerSlot') { selectedWasherTime = fullDateTimeString; }
-        if(classPrefix === 'dryerSlot') { selectedDryerTime = fullDateTimeString; }
+        if (classPrefix === 'washerSlot') {
+            selectedWasherTime = fullDateTimeString;
+            selectedWasherDateKey = getDateKey(parseUniqueDateTime(fullDateTimeString).dateString);
+            selectedDryerTime = 'Not Selected / Not Rented';
+            buildSchedule('dryerTable', 'dryerSlot');
+        }
+
+        if (classPrefix === 'dryerSlot') {
+            selectedDryerTime = fullDateTimeString;
+        }
     }
 
     function toggleSchedules() {
@@ -980,6 +1132,7 @@ const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxcwx3HhqQ5Pk
     function resetSelectionsAndButtons() {
         // Reset global time variables
         selectedWasherTime = "Not Selected / Not Rented";
+        selectedWasherDateKey = null;
         selectedDryerTime = "Not Selected / Not Rented";
 
         // Remove 'selected' class from all time slot buttons
